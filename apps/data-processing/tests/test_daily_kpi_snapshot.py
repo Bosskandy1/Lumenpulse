@@ -159,28 +159,52 @@ def test_scheduler_job_execution(sqlite_db_service, monkeypatch):
 
 
 def test_api_kpi_snapshot_endpoints(sqlite_db_service, monkeypatch):
+    """The snapshot run endpoint is now asynchronous (Issue #1248).
+
+    It returns HTTP 202 with a job id; the caller polls GET /jobs/{id} for the
+    terminal result. The context-managed TestClient keeps the event loop alive
+    so the background job actually runs to completion.
+    """
+    import time as _time
     from src.security import security_config
     import src.api.server as server_module
 
     monkeypatch.setattr(security_config, "api_key", "test-key")
     monkeypatch.setattr(server_module, "postgres_service", sqlite_db_service)
 
-    client = TestClient(app)
     headers = {"X-API-Key": "test-key"}
 
-    # Test POST trigger snapshot
-    run_resp = client.post(
-        "/analytics/kpis/daily-snapshots/run?target_date=2026-07-24&period=daily",
-        headers=headers,
-    )
-    assert run_resp.status_code == 200
-    run_data = run_resp.json()
-    assert run_data["status"] in ("created", "skipped")
-    assert run_data["date"] == "2026-07-24"
+    with TestClient(app) as client:
+        # Trigger snapshot -> 202 Accepted with a job identifier.
+        run_resp = client.post(
+            "/analytics/kpis/daily-snapshots/run?target_date=2026-07-24&period=daily",
+            headers=headers,
+        )
+        assert run_resp.status_code == 202
+        submission = run_resp.json()
+        job_id = submission["job_id"]
+        assert submission["status"] in ("queued", "running", "succeeded")
+        assert submission["status_url"] == f"/jobs/{job_id}"
 
-    # Test GET snapshots list
-    get_resp = client.get("/analytics/kpis/daily-snapshots?period=daily", headers=headers)
-    assert get_resp.status_code == 200
-    list_data = get_resp.json()
-    assert len(list_data) >= 1
-    assert list_data[0]["snapshot_date"] == "2026-07-24"
+        # Poll the job-status endpoint until the run reaches a terminal state.
+        job = None
+        for _ in range(200):
+            status_resp = client.get(f"/jobs/{job_id}", headers=headers)
+            assert status_resp.status_code == 200
+            body = status_resp.json()
+            if body["status"] in ("succeeded", "failed"):
+                job = body
+                break
+            _time.sleep(0.02)
+
+        assert job is not None, "job did not reach a terminal state in time"
+        assert job["status"] == "succeeded", job
+        assert job["result"]["status"] in ("created", "skipped")
+        assert job["result"]["date"] == "2026-07-24"
+
+        # Test GET snapshots list (still synchronous).
+        get_resp = client.get("/analytics/kpis/daily-snapshots?period=daily", headers=headers)
+        assert get_resp.status_code == 200
+        list_data = get_resp.json()
+        assert len(list_data) >= 1
+        assert list_data[0]["snapshot_date"] == "2026-07-24"
