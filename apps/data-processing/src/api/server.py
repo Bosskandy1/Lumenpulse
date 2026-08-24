@@ -124,6 +124,10 @@ from src.api.review_queue_routes import router as review_queue_router
 from src.api.ledger_cursor_routes import router as ledger_cursor_router
 from src.api.kpi_routes import router as kpi_router
 from src.api.account_operation_routes import router as account_operation_router
+from src.api import jobs_routes
+from src.api.jobs_routes import router as jobs_router
+from src.jobs.job_store import JobStore
+from src.jobs.job_queue import JobQueue
 
 app.include_router(ingestion_quality_router)
 app.include_router(review_queue_router)
@@ -131,6 +135,37 @@ app.include_router(ledger_cursor_router)
 app.include_router(kpi_router)  # KPI routes for TVL and volume computation
 app.include_router(account_operation_router)  # Account operation ingestion
 app.include_router(rebuild_router)  # Rebuild routes for admin
+
+# ---------------------------------------------------------------------------
+# Asynchronous analytics job queue (Issue #1248)
+# ---------------------------------------------------------------------------
+# Long-running analytics endpoints (/retrain, /correlation/*, KPI snapshot run)
+# submit their work to this queue and return a job id immediately (HTTP 202).
+# Callers then poll GET /jobs/{job_id} for the terminal status + result.
+job_store = JobStore()
+# Surface any jobs orphaned by a previous process restart as failed (never
+# silently left "running") - satisfies the restart-loss-detection requirement.
+job_store.reap_stale()
+job_queue = JobQueue(job_store)
+jobs_routes.configure(job_store)
+app.include_router(jobs_router)  # GET /jobs, GET /jobs/{job_id}
+
+
+class JobSubmissionResponse(BaseModel):
+    """Response returned when a long-running operation is accepted (HTTP 202)."""
+
+    job_id: str
+    status: str
+    status_url: str
+
+
+def _job_submission_response(job) -> "JobSubmissionResponse":
+    """Build the 202 acceptance payload for a submitted/collapsed job."""
+    return JobSubmissionResponse(
+        job_id=job.id,
+        status=job.status,
+        status_url=f"/jobs/{job.id}",
+    )
 
 
 try:
@@ -579,34 +614,37 @@ class ModelStatusResponse(BaseModel):
     registry: Dict[str, Any]
 
 
-@app.post("/retrain", response_model=RetrainResponse)
+@app.post("/retrain", response_model=JobSubmissionResponse, status_code=202)
 @limiter.limit("5/minute") if limiter else lambda x: x
 async def trigger_retraining(
     body: RetrainRequest,
     request: Request,
-) -> RetrainResponse:
+) -> JobSubmissionResponse:
     """
-    Trigger an immediate model retraining run.
+    Trigger an immediate model retraining run (asynchronous, Issue #1248).
 
-    Runs synchronously in a thread pool so the HTTP response is returned
-    only after retraining completes (or fails). For long-running production
-    retrains, consider making this async with a task queue.
+    The retraining work is enqueued onto the background job queue and this
+    endpoint returns HTTP 202 immediately with a job identifier. Poll
+    ``GET /jobs/{job_id}`` for the terminal status and result (the original
+    ``RetrainResponse`` payload is stored as the job ``result``).
+
+    Concurrent duplicate submissions with identical parameters are collapsed
+    onto the already-active job.
 
     Requires X-API-Key header.
     """
-    import asyncio
+    force = body.force
 
     logger.info(
-        f"Retraining triggered via API | force={body.force} | "
+        f"Retraining submitted via API | force={force} | "
         f"client_ip={request.client.host}"
     )
 
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(
-        None, lambda: run_retraining(force=body.force)
-    )
+    def _run() -> Dict[str, Any]:
+        return run_retraining(force=force)
 
-    return RetrainResponse(**{k: result.get(k) for k in RetrainResponse.model_fields if k in result})
+    job = await job_queue.submit("retrain", {"force": force}, _run)
+    return _job_submission_response(job)
 
 
 @app.get("/model/status", response_model=ModelStatusResponse)
@@ -1118,16 +1156,20 @@ class LagAnalysisResponse(BaseModel):
     recommendation: str
 
 
-@app.post("/correlation/analyze", response_model=CorrelationResponse)
+@app.post("/correlation/analyze", response_model=JobSubmissionResponse, status_code=202)
 @limiter.limit("20/minute") if limiter else lambda x: x
 async def analyze_correlation(
     body: CorrelationRequest,
     request: Request,
-) -> CorrelationResponse:
+) -> JobSubmissionResponse:
     """
-    Analyze correlation between sentiment and price/volume data.
+    Analyze correlation between sentiment and price/volume data (async, #1248).
 
-    Returns correlation scores (-1 to 1) and scatter plot data points.
+    The analysis is enqueued onto the background job queue; this endpoint
+    returns HTTP 202 with a job identifier. Poll ``GET /jobs/{job_id}`` for the
+    terminal status and result (the original ``CorrelationResponse`` payload is
+    stored as the job ``result``). Duplicate submissions are collapsed.
+
     Requires X-API-Key header.
     """
     sentiment_list = [{"timestamp": dp.timestamp, "score": dp.score} for dp in body.sentiment_data]
@@ -1141,60 +1183,85 @@ async def analyze_correlation(
         if body.volume_data
         else []
     )
+    lag_hours = body.lag_hours
 
     logger.info(
-        f"Correlation analysis requested | sentiment_points={len(sentiment_list)} | "
+        f"Correlation analysis submitted | sentiment_points={len(sentiment_list)} | "
         f"price_points={len(price_list)} | volume_points={len(volume_list)} | "
-        f"lag_hours={body.lag_hours} | client_ip={request.client.host}"
+        f"lag_hours={lag_hours} | client_ip={request.client.host}"
     )
 
-    result = CorrelationEngine.full_analysis(
-        sentiment_data=sentiment_list,
-        price_data=price_list,
-        volume_data=volume_list,
-        lag_hours=body.lag_hours,
-    )
+    def _run() -> Dict[str, Any]:
+        result = CorrelationEngine.full_analysis(
+            sentiment_data=sentiment_list,
+            price_data=price_list,
+            volume_data=volume_list,
+            lag_hours=lag_hours,
+        )
+        return {
+            "price_correlation": result.get("price_correlation"),
+            "volume_correlation": result.get("volume_correlation"),
+            "summary": result.get("summary", {}),
+        }
 
-    return CorrelationResponse(
-        price_correlation=result.get("price_correlation"),
-        volume_correlation=result.get("volume_correlation"),
-        summary=result.get("summary", {}),
-    )
+    params = {
+        "sentiment": sentiment_list,
+        "price": price_list,
+        "volume": volume_list,
+        "lag_hours": lag_hours,
+    }
+    job = await job_queue.submit("correlation_analyze", params, _run)
+    return _job_submission_response(job)
 
 
-@app.post("/correlation/lag-analysis", response_model=LagAnalysisResponse)
+@app.post("/correlation/lag-analysis", response_model=JobSubmissionResponse, status_code=202)
 @limiter.limit("10/minute") if limiter else lambda x: x
 async def analyze_lag_correlation(
     body: LagAnalysisRequest,
     request: Request,
-) -> LagAnalysisResponse:
+) -> JobSubmissionResponse:
     """
-    Analyze correlation across multiple time lags to find optimal lead time.
+    Analyze correlation across multiple time lags (asynchronous, Issue #1248).
 
-    Returns the best lag hours and correlation strength for predicting market changes.
+    The analysis is enqueued onto the background job queue; this endpoint
+    returns HTTP 202 with a job identifier. Poll ``GET /jobs/{job_id}`` for the
+    terminal status and result (the original ``LagAnalysisResponse`` payload is
+    stored as the job ``result``). Duplicate submissions are collapsed.
+
     Requires X-API-Key header.
     """
     sentiment_list = [{"timestamp": dp.timestamp, "score": dp.score} for dp in body.sentiment_data]
     metric_list = [{"timestamp": dp.timestamp, "value": dp.value} for dp in body.metric_data]
+    metric_type = body.metric_type
+    max_lag_hours = body.max_lag_hours
 
     logger.info(
-        f"Lag correlation analysis | metric_type={body.metric_type} | "
-        f"max_lag={body.max_lag_hours}h | client_ip={request.client.host}"
+        f"Lag correlation analysis submitted | metric_type={metric_type} | "
+        f"max_lag={max_lag_hours}h | client_ip={request.client.host}"
     )
 
-    result = CorrelationEngine.analyze_with_lags(
-        sentiment_data=sentiment_list,
-        metric_data=metric_list,
-        metric_type=body.metric_type,
-        max_lag_hours=body.max_lag_hours,
-    )
+    def _run() -> Dict[str, Any]:
+        result = CorrelationEngine.analyze_with_lags(
+            sentiment_data=sentiment_list,
+            metric_data=metric_list,
+            metric_type=metric_type,
+            max_lag_hours=max_lag_hours,
+        )
+        return {
+            "best_lag_hours": result["best_lag_hours"],
+            "best_correlation": result["best_correlation"],
+            "lag_analysis": result["lag_analysis"],
+            "recommendation": result["recommendation"],
+        }
 
-    return LagAnalysisResponse(
-        best_lag_hours=result["best_lag_hours"],
-        best_correlation=result["best_correlation"],
-        lag_analysis=result["lag_analysis"],
-        recommendation=result["recommendation"],
-    )
+    params = {
+        "sentiment": sentiment_list,
+        "metric": metric_list,
+        "metric_type": metric_type,
+        "max_lag_hours": max_lag_hours,
+    }
+    job = await job_queue.submit("correlation_lag_analysis", params, _run)
+    return _job_submission_response(job)
 
 
 # ---------------------------------------------------------------------------
@@ -1265,31 +1332,44 @@ async def get_daily_kpi_snapshots(
     ]
 
 
-@app.post("/analytics/kpis/daily-snapshots/run", response_model=DailyKPISnapshotRunResponse)
+@app.post("/analytics/kpis/daily-snapshots/run", response_model=JobSubmissionResponse, status_code=202)
 @limiter.limit("10/minute") if limiter else lambda x: x
 async def trigger_daily_kpi_snapshot(
     request: Request,
     target_date: Optional[str] = Query(None, description="Target date (YYYY-MM-DD)"),
     period: str = Query("daily", description="Period identifier"),
-) -> DailyKPISnapshotRunResponse:
+) -> JobSubmissionResponse:
     """
-    Trigger manual generation of a daily on-chain KPI snapshot.
-    Skips duplicate snapshot creation if a snapshot for target_date and period already exists.
+    Trigger manual generation of a daily on-chain KPI snapshot (async, #1248).
+
+    The snapshot generation is enqueued onto the background job queue; this
+    endpoint returns HTTP 202 with a job identifier. Poll ``GET /jobs/{job_id}``
+    for the terminal status and result (the original ``DailyKPISnapshotRunResponse``
+    payload is stored as the job ``result``). Duplicate submissions for the same
+    ``target_date``/``period`` while a run is still active are collapsed.
+
+    The generator itself still skips duplicate snapshot creation if a snapshot
+    for ``target_date`` and ``period`` already exists.
+
     Requires X-API-Key header.
     """
-    from src.analytics.daily_kpi_snapshot import DailyKPISnapshotGenerator
+    def _run() -> Dict[str, Any]:
+        from src.analytics.daily_kpi_snapshot import DailyKPISnapshotGenerator
 
-    generator = DailyKPISnapshotGenerator(db_service=postgres_service)
-    result = generator.run_snapshot(target_date=target_date, period=period)
+        generator = DailyKPISnapshotGenerator(db_service=postgres_service)
+        result = generator.run_snapshot(target_date=target_date, period=period)
+        return {
+            "status": result["status"],
+            "message": result["message"],
+            "date": result["date"],
+            "period": result["period"],
+            "tvl": result["tvl"],
+            "volume": result["volume"],
+            "active_rounds": result["active_rounds"],
+            "contribution_count": result["contribution_count"],
+            "unique_contributors": result["unique_contributors"],
+        }
 
-    return DailyKPISnapshotRunResponse(
-        status=result["status"],
-        message=result["message"],
-        date=result["date"],
-        period=result["period"],
-        tvl=result["tvl"],
-        volume=result["volume"],
-        active_rounds=result["active_rounds"],
-        contribution_count=result["contribution_count"],
-        unique_contributors=result["unique_contributors"],
-    )
+    params = {"target_date": target_date, "period": period}
+    job = await job_queue.submit("daily_kpi_snapshot", params, _run)
+    return _job_submission_response(job)
