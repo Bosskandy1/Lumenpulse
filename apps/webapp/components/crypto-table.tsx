@@ -1,11 +1,14 @@
 "use client";
 
-import { TrendingUp, TrendingDown, Star } from "lucide-react";
+import { TrendingUp, TrendingDown, Star, Coins } from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { CryptoApiService, transformCryptoData, CryptoApiData } from "@/lib/api-services";
 import { WatchlistItemType } from "@/lib/watchlist-service";
 import { useWatchlist } from "@/hooks/use-watchlist";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListError } from "@/components/ui/list-error";
 
 interface CryptoData {
   id: number;
@@ -126,28 +129,22 @@ export function CryptoTable({ formatNumberAction, showWatchlistToggle = true }: 
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-pulse flex space-x-4">
-            <div className="rounded-full bg-white/10 h-12 w-12"></div>
-            <div className="flex-1 space-y-4 py-1">
-              <div className="h-4 bg-white/10 rounded w-3/4"></div>
-              <div className="space-y-2">
-                <div className="h-4 bg-white/10 rounded"></div>
-                <div className="h-4 bg-white/10 rounded w-5/6"></div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ListSkeleton count={8} rowHeight={72} />
       ) : error && cryptoData.length === 0 ? (
-        <div className="text-center text-red-500 py-8">
-          {error}
-          <button
-            className="block mx-auto mt-4 px-4 py-2 bg-primary/20 text-white rounded-lg hover:bg-primary/30 transition-colors"
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </button>
-        </div>
+        <ListError
+          message={error}
+          onRetry={() => window.location.reload()}
+        />
+      ) : cryptoData.length === 0 ? (
+        <EmptyState
+          icon={Coins}
+          title="No cryptocurrency data"
+          description="Unable to load market data. Please try again later."
+          action={{
+            label: "Reload page",
+            onClick: () => window.location.reload(),
+          }}
+        />
       ) : (
         <div
           className="overflow-x-auto max-h-[600px] overflow-y-auto"
