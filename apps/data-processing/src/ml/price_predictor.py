@@ -56,6 +56,7 @@ class PricePredictor:
         data: pd.DataFrame,
         target_column: str = 'target',
         schema_version: Optional[str] = None,
+        random_state: int = 42,
     ) -> Dict[str, float]:
         """
         Trains the model using the provided training data.
@@ -67,6 +68,7 @@ class PricePredictor:
                 model. When omitted it is taken from the training frame's
                 ``attrs['schema_version']`` (set by FeatureStore) and falls back
                 to the current registered schema version.
+            random_state: Seed for train/test split to ensure reproducibility.
 
         Returns:
             A dictionary containing training metrics.
@@ -82,7 +84,7 @@ class PricePredictor:
         X = data.drop(columns=[target_column])
         y = data[target_column]
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_state)
 
         self.pipeline.fit(X_train, y_train)
 

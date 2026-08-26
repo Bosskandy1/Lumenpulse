@@ -126,6 +126,17 @@
     "failed": "贡献失败",
     "transaction_hash": "交易哈希"
   },
+  "contribution_draft": {
+    "banner_title": "未完成的贡献",
+    "banner_body": "您已开始向 {{project}} 贡献 {{amount}} XLM。",
+    "saved_at": "保存于 {{date}}",
+    "resume": "继续",
+    "discard": "放弃",
+    "restored_notice": "已恢复草稿 —— 请核对金额，确认后即可提交。",
+    "stale_notice": "该草稿已过期，无法继续。",
+    "invalid_amount_notice": "该草稿的金额已无效，无法继续。",
+    "config_missing_notice": "测试网配置不可用，暂时无法继续该草稿。"
+  },
   "report_modal": {
     "title": "举报内容",
     "category_label": "问题类型是什么？",

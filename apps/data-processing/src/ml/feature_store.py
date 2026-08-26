@@ -2,6 +2,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from src.ml.feature_schema import (
     PRICE_PREDICTOR_FEATURE_SET,
@@ -67,31 +68,38 @@ class FeatureStore:
             df[expected_col] = pd.Series(dtype='float64')
         return df
 
-    def get_features_for_asset(self, asset: str, window: str) -> pd.DataFrame:
+    def get_features_for_asset(self, asset: str, window: Optional[str] = None, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None) -> pd.DataFrame:
         """
         Retrieves and combines features for a specific asset over a given time window.
         Combines: Sentiment stats, Volume metrics, and Volatility indicators.
         """
-        start_time = self._parse_window_to_datetime(window)
+        if start_time is None:
+            if window is None:
+                raise ValueError("Must provide either window or start_time")
+            start_time = self._parse_window_to_datetime(window)
+            
+        end_clause = "AND timestamp <= :end_time" if end_time else ""
         
-        sentiment_query = text("""
+        sentiment_query = text(f"""
             SELECT timestamp, sentiment_score FROM asset_sentiment_view
-            WHERE asset = :asset AND timestamp >= :start_time
+            WHERE asset = :asset AND timestamp >= :start_time {end_clause}
         """)
         
-        volume_query = text("""
+        volume_query = text(f"""
             SELECT timestamp, volume FROM asset_volume_view
-            WHERE asset = :asset AND timestamp >= :start_time
+            WHERE asset = :asset AND timestamp >= :start_time {end_clause}
         """)
         
-        volatility_query = text("""
+        volatility_query = text(f"""
             SELECT timestamp, volatility FROM asset_volatility_view
-            WHERE asset = :asset AND timestamp >= :start_time
+            WHERE asset = :asset AND timestamp >= :start_time {end_clause}
         """)
 
         conn = self.db.connection()
         try:
             params = {"asset": asset, "start_time": start_time}
+            if end_time:
+                params["end_time"] = end_time
             sentiment_df = pd.read_sql(sentiment_query, conn, params=params)
             volume_df = pd.read_sql(volume_query, conn, params=params)
             volatility_df = pd.read_sql(volatility_query, conn, params=params)

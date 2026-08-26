@@ -70,6 +70,7 @@ import { z } from 'zod';
  * - PORTFOLIO_SNAPSHOT_ATTEMPTS
  * - PORTFOLIO_SNAPSHOT_RETRY_DELAY_MS
  * - PORTFOLIO_SNAPSHOT_QUEUE_METRICS
+ * - OUTBOX_MAX_ATTEMPTS
  * - RATE_LIMIT_TRACK_BY_IP
  * - RATE_LIMIT_TRACK_BY_API_KEY
  * - RATE_LIMIT_API_KEY_HEADER
@@ -93,6 +94,10 @@ import { z } from 'zod';
  * - RATE_LIMIT_WATCHLIST_WRITE_LIMIT
  * - RATE_LIMIT_WATCHLIST_WRITE_TTL_MS
  * - RATE_LIMIT_WATCHLIST_WRITE_BLOCK_MS
+ * - IDEMPOTENCY_RETENTION_MS
+ * - IDEMPOTENCY_LEASE_MS
+ * - IDEMPOTENCY_CONCURRENCY_TIMEOUT_MS
+ * - IDEMPOTENCY_CLEANUP_CRON
  *
  * NEVER_SERVER:
  * - NEXT_PUBLIC_* (validated client-side only)
@@ -533,6 +538,23 @@ const envSchema = z
       parseBoolean,
       z.boolean().default(false),
     ),
+
+    // Outbox relay — dispatch attempts before an event is dead-lettered.
+    OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(5),
+
+    // Idempotency keys (see apps/backend/src/idempotency)
+    IDEMPOTENCY_RETENTION_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(86_400_000),
+    IDEMPOTENCY_LEASE_MS: z.coerce.number().int().min(1).default(60_000),
+    IDEMPOTENCY_CONCURRENCY_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(30_000),
+    IDEMPOTENCY_CLEANUP_CRON: z.string().trim().default('0 3 * * *'),
   })
   .superRefine((values, context) => {
     if (values.NODE_ENV === 'production' && !values.CORS_ORIGIN) {
@@ -979,6 +1001,14 @@ const optionalSummary = [
     'PORTFOLIO_SNAPSHOT_QUEUE_METRICS',
     String(parsedEnv.PORTFOLIO_SNAPSHOT_QUEUE_METRICS),
   ],
+  ['OUTBOX_MAX_ATTEMPTS', String(parsedEnv.OUTBOX_MAX_ATTEMPTS)],
+  ['IDEMPOTENCY_RETENTION_MS', String(parsedEnv.IDEMPOTENCY_RETENTION_MS)],
+  ['IDEMPOTENCY_LEASE_MS', String(parsedEnv.IDEMPOTENCY_LEASE_MS)],
+  [
+    'IDEMPOTENCY_CONCURRENCY_TIMEOUT_MS',
+    String(parsedEnv.IDEMPOTENCY_CONCURRENCY_TIMEOUT_MS),
+  ],
+  ['IDEMPOTENCY_CLEANUP_CRON', parsedEnv.IDEMPOTENCY_CLEANUP_CRON],
 ] as const;
 
 const wasDefaulted = (key: string): boolean => {
@@ -1144,6 +1174,34 @@ export const config = Object.freeze({
     attempts: parsedEnv.PORTFOLIO_SNAPSHOT_ATTEMPTS,
     retryDelayMs: parsedEnv.PORTFOLIO_SNAPSHOT_RETRY_DELAY_MS,
     queueMetrics: parsedEnv.PORTFOLIO_SNAPSHOT_QUEUE_METRICS,
+  }),
+  outbox: Object.freeze({
+    /**
+     * Dispatch attempts before an outbox event is moved to the dead-letter
+     * queue and stops blocking the relay. Default 5.
+     */
+    maxAttempts: parsedEnv.OUTBOX_MAX_ATTEMPTS,
+  }),
+  idempotency: Object.freeze({
+    /**
+     * How long a completed `Idempotency-Key` response is replayed. Default 24h.
+     */
+    retentionMs: parsedEnv.IDEMPOTENCY_RETENTION_MS,
+    /**
+     * How long an in_progress claim is held before a retry can reclaim it.
+     * Default 60s.
+     */
+    leaseMs: parsedEnv.IDEMPOTENCY_LEASE_MS,
+    /**
+     * How long a concurrent request waits for the request that owns the key
+     * to finish. Default 30s.
+     */
+    concurrencyTimeoutMs: parsedEnv.IDEMPOTENCY_CONCURRENCY_TIMEOUT_MS,
+    /**
+     * Cron expression for the scheduled cleanup of expired records.
+     * Default: daily at 03:00 UTC.
+     */
+    cleanupCron: parsedEnv.IDEMPOTENCY_CLEANUP_CRON,
   }),
   rateLimit: Object.freeze({
     tracker: Object.freeze({

@@ -60,10 +60,10 @@ export class ReadModelRebuildService {
 
   // Mapping of datasets to their data-processing endpoints
   private readonly datasetEndpoints: Record<RebuildDataset, string> = {
-    [RebuildDataset.KPI_SNAPSHOTS]: '/api/kpi/recompute',
-    [RebuildDataset.PROJECT_VIEWS]: '/api/project-views/rebuild',
-    [RebuildDataset.CONTRACT_EVENTS]: '/api/contract-events/rebuild',
-    [RebuildDataset.DAILY_METRICS]: '/api/metrics/rebuild',
+    [RebuildDataset.KPI_SNAPSHOTS]: '/api/rebuild/kpi-snapshots',
+    [RebuildDataset.PROJECT_VIEWS]: '/api/rebuild/project-views',
+    [RebuildDataset.CONTRACT_EVENTS]: '/api/rebuild/contract-events',
+    [RebuildDataset.DAILY_METRICS]: '/api/rebuild/metrics',
     [RebuildDataset.ALL]: '/api/rebuild/all',
   };
 

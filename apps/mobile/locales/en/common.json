@@ -127,6 +127,17 @@
     "failed": "Contribution Failed",
     "transaction_hash": "Transaction Hash"
   },
+  "contribution_draft": {
+    "banner_title": "Unfinished contribution",
+    "banner_body": "You started contributing {{amount}} XLM to {{project}}.",
+    "saved_at": "Saved {{date}}",
+    "resume": "Resume",
+    "discard": "Discard",
+    "restored_notice": "Draft restored — review the amount and confirm when you're ready.",
+    "stale_notice": "This saved draft has expired and can no longer be resumed.",
+    "invalid_amount_notice": "This draft's amount is no longer valid and cannot be resumed.",
+    "config_missing_notice": "Testnet configuration is unavailable, so this draft can't be resumed right now."
+  },
   "report_modal": {
     "title": "Report Content",
     "category_label": "What's the issue?",

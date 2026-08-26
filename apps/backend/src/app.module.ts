@@ -49,6 +49,7 @@ import { OutboxModule } from './outbox/outbox.module';
 import { VerificationModule } from './verification/verification.module';
 import { TelegramBotModule } from './telegram-bot/telegram-bot.module';
 import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor';
+import { IdempotencyModule } from './idempotency/idempotency.module';
 import { DeprecationInterceptor } from './common/interceptors/deprecation.interceptor';
 import { SearchModule } from './search/search.module';
 import { ExportModule } from './export/export.module';
@@ -205,6 +206,9 @@ import { PriceAlertModule } from './price-alert/price-alert.module';
 
     // Price alerts
     PriceAlertModule,
+
+    // Idempotency for write endpoints
+    IdempotencyModule,
   ],
   controllers: [AppController, TestController, TestExceptionController],
   providers: [
