@@ -1300,6 +1300,75 @@
         }
       }
     },
+    "/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Job Status",
+        "description": "Return the current status and result reference for a single job.\n\nA job left ``running`` by a since-restarted worker is reported here as\n``failed`` (with an explanatory error) rather than appearing to hang -\nrestart loss is surfaced, never silent.\n\nRequires the ``X-API-Key`` header (enforced by the app middleware).",
+        "operationId": "get_job_status_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "List Jobs",
+        "description": "Return the status of all known jobs (stale running jobs are reaped first).\n\nRequires the ``X-API-Key`` header (enforced by the app middleware).",
+        "operationId": "list_jobs_jobs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobStatusResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Jobs Jobs Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/metrics": {
       "get": {
         "summary": "Metrics",
@@ -1700,7 +1769,7 @@
     "/retrain": {
       "post": {
         "summary": "Trigger Retraining",
-        "description": "Trigger an immediate model retraining run.\n\nRuns synchronously in a thread pool so the HTTP response is returned\nonly after retraining completes (or fails). For long-running production\nretrains, consider making this async with a task queue.\n\nRequires X-API-Key header.",
+        "description": "Trigger an immediate model retraining run (asynchronous, Issue #1248).\n\nThe retraining work is enqueued onto the background job queue and this\nendpoint returns HTTP 202 immediately with a job identifier. Poll\n``GET /jobs/{job_id}`` for the terminal status and result (the original\n``RetrainResponse`` payload is stored as the job ``result``).\n\nConcurrent duplicate submissions with identical parameters are collapsed\nonto the already-active job.\n\nRequires X-API-Key header.",
         "operationId": "trigger_retraining_retrain_post",
         "requestBody": {
           "content": {
@@ -1713,12 +1782,12 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RetrainResponse"
+                  "$ref": "#/components/schemas/JobSubmissionResponse"
                 }
               }
             }
@@ -2120,7 +2189,7 @@
     "/correlation/analyze": {
       "post": {
         "summary": "Analyze Correlation",
-        "description": "Analyze correlation between sentiment and price/volume data.\n\nReturns correlation scores (-1 to 1) and scatter plot data points.\nRequires X-API-Key header.",
+        "description": "Analyze correlation between sentiment and price/volume data (async, #1248).\n\nThe analysis is enqueued onto the background job queue; this endpoint\nreturns HTTP 202 with a job identifier. Poll ``GET /jobs/{job_id}`` for the\nterminal status and result (the original ``CorrelationResponse`` payload is\nstored as the job ``result``). Duplicate submissions are collapsed.\n\nRequires X-API-Key header.",
         "operationId": "analyze_correlation_correlation_analyze_post",
         "requestBody": {
           "content": {
@@ -2133,12 +2202,12 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CorrelationResponse"
+                  "$ref": "#/components/schemas/JobSubmissionResponse"
                 }
               }
             }
@@ -2159,7 +2228,7 @@
     "/correlation/lag-analysis": {
       "post": {
         "summary": "Analyze Lag Correlation",
-        "description": "Analyze correlation across multiple time lags to find optimal lead time.\n\nReturns the best lag hours and correlation strength for predicting market changes.\nRequires X-API-Key header.",
+        "description": "Analyze correlation across multiple time lags (asynchronous, Issue #1248).\n\nThe analysis is enqueued onto the background job queue; this endpoint\nreturns HTTP 202 with a job identifier. Poll ``GET /jobs/{job_id}`` for the\nterminal status and result (the original ``LagAnalysisResponse`` payload is\nstored as the job ``result``). Duplicate submissions are collapsed.\n\nRequires X-API-Key header.",
         "operationId": "analyze_lag_correlation_correlation_lag_analysis_post",
         "requestBody": {
           "content": {
@@ -2172,12 +2241,12 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LagAnalysisResponse"
+                  "$ref": "#/components/schemas/JobSubmissionResponse"
                 }
               }
             }
@@ -2293,7 +2362,7 @@
     "/analytics/kpis/daily-snapshots/run": {
       "post": {
         "summary": "Trigger Daily Kpi Snapshot",
-        "description": "Trigger manual generation of a daily on-chain KPI snapshot.\nSkips duplicate snapshot creation if a snapshot for target_date and period already exists.\nRequires X-API-Key header.",
+        "description": "Trigger manual generation of a daily on-chain KPI snapshot (async, #1248).\n\nThe snapshot generation is enqueued onto the background job queue; this\nendpoint returns HTTP 202 with a job identifier. Poll ``GET /jobs/{job_id}``\nfor the terminal status and result (the original ``DailyKPISnapshotRunResponse``\npayload is stored as the job ``result``). Duplicate submissions for the same\n``target_date``/``period`` while a run is still active are collapsed.\n\nThe generator itself still skips duplicate snapshot creation if a snapshot\nfor ``target_date`` and ``period`` already exists.\n\nRequires X-API-Key header.",
         "operationId": "trigger_daily_kpi_snapshot_analytics_kpis_daily_snapshots_run_post",
         "parameters": [
           {
@@ -2328,12 +2397,12 @@
           }
         ],
         "responses": {
-          "200": {
+          "202": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DailyKPISnapshotRunResponse"
+                  "$ref": "#/components/schemas/JobSubmissionResponse"
                 }
               }
             }
@@ -2909,44 +2978,6 @@
         ],
         "title": "CorrelationRequest"
       },
-      "CorrelationResponse": {
-        "properties": {
-          "price_correlation": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Price Correlation"
-          },
-          "volume_correlation": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Volume Correlation"
-          },
-          "summary": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Summary"
-          }
-        },
-        "type": "object",
-        "required": [
-          "summary"
-        ],
-        "title": "CorrelationResponse"
-      },
       "CursorListResponse": {
         "properties": {
           "count": {
@@ -3178,59 +3209,6 @@
           "unique_contributors"
         ],
         "title": "DailyKPISnapshotResponse"
-      },
-      "DailyKPISnapshotRunResponse": {
-        "properties": {
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "message": {
-            "type": "string",
-            "title": "Message"
-          },
-          "date": {
-            "type": "string",
-            "title": "Date"
-          },
-          "period": {
-            "type": "string",
-            "title": "Period"
-          },
-          "tvl": {
-            "type": "number",
-            "title": "Tvl"
-          },
-          "volume": {
-            "type": "number",
-            "title": "Volume"
-          },
-          "active_rounds": {
-            "type": "integer",
-            "title": "Active Rounds"
-          },
-          "contribution_count": {
-            "type": "integer",
-            "title": "Contribution Count"
-          },
-          "unique_contributors": {
-            "type": "integer",
-            "title": "Unique Contributors"
-          }
-        },
-        "type": "object",
-        "required": [
-          "status",
-          "message",
-          "date",
-          "period",
-          "tvl",
-          "volume",
-          "active_rounds",
-          "contribution_count",
-          "unique_contributors"
-        ],
-        "title": "DailyKPISnapshotRunResponse"
       },
       "ForecastResponse": {
         "properties": {
@@ -3635,6 +3613,103 @@
         "title": "IngestionResponse",
         "description": "Response model for ingestion results."
       },
+      "JobStatusResponse": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id",
+            "description": "Unique job identifier"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Logical job type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "One of: queued | running | succeeded | failed"
+          },
+          "result_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Ref",
+            "description": "Reference (URL) at which the result can be retrieved"
+          },
+          "result": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result",
+            "description": "Inline result payload once the job has succeeded"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Error message when the job has failed"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "description": "Job creation timestamp (ISO-8601)"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At",
+            "description": "Last status change timestamp (ISO-8601)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "type",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "JobStatusResponse",
+        "description": "Status of a single background job."
+      },
+      "JobSubmissionResponse": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "status_url": {
+            "type": "string",
+            "title": "Status Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "status",
+          "status_url"
+        ],
+        "title": "JobSubmissionResponse",
+        "description": "Response returned when a long-running operation is accepted (HTTP 202)."
+      },
       "KPIResponse": {
         "properties": {
           "tvl": {
@@ -3789,38 +3864,6 @@
           "metric_data"
         ],
         "title": "LagAnalysisRequest"
-      },
-      "LagAnalysisResponse": {
-        "properties": {
-          "best_lag_hours": {
-            "type": "integer",
-            "title": "Best Lag Hours"
-          },
-          "best_correlation": {
-            "type": "number",
-            "title": "Best Correlation"
-          },
-          "lag_analysis": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Lag Analysis"
-          },
-          "recommendation": {
-            "type": "string",
-            "title": "Recommendation"
-          }
-        },
-        "type": "object",
-        "required": [
-          "best_lag_hours",
-          "best_correlation",
-          "lag_analysis",
-          "recommendation"
-        ],
-        "title": "LagAnalysisResponse"
       },
       "MetricDataPoint": {
         "properties": {
@@ -4318,75 +4361,6 @@
         "type": "object",
         "title": "RetrainRequest"
       },
-      "RetrainResponse": {
-        "properties": {
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "finished_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Finished At"
-          },
-          "duration_seconds": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Duration Seconds"
-          },
-          "models": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Models",
-            "default": {}
-          },
-          "registry": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Registry",
-            "default": {}
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          }
-        },
-        "type": "object",
-        "required": [
-          "status"
-        ],
-        "title": "RetrainResponse"
-      },
       "ReviewQueueItemResponse": {
         "properties": {
           "id": {
@@ -4741,13 +4715,6 @@
           "type": {
             "type": "string",
             "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
           }
         },
         "type": "object",
