@@ -10,7 +10,10 @@ import sys
 import contextvars
 import uuid
 from typing import Optional, Union
-from pythonjsonlogger import jsonlogger
+try:
+    from pythonjsonlogger import jsonlogger
+except ImportError:
+    jsonlogger = None  # type: ignore[assignment]
 
 # Context variable for correlation ID
 correlation_id_ctx = contextvars.ContextVar("correlation_id", default="system")
@@ -79,7 +82,7 @@ def setup_logger(
     handler = logging.StreamHandler(sys.stdout)
     
     # Set formatter based on format type
-    if json_format:
+    if json_format and jsonlogger is not None:
         # Use JSON formatter with correlation ID
         formatter = jsonlogger.JsonFormatter(
             "%(asctime)s %(levelname)s %(name)s %(correlation_id)s %(message)s",
