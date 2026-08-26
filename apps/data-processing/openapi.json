@@ -1208,6 +1208,75 @@
         }
       }
     },
+    "/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Job Status",
+        "description": "Return the current status and result reference for a single job.\n\nA job left ``running`` by a since-restarted worker is reported here as\n``failed`` (with an explanatory error) rather than appearing to hang -\nrestart loss is surfaced, never silent.\n\nRequires the ``X-API-Key`` header (enforced by the app middleware).",
+        "operationId": "get_job_status_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "List Jobs",
+        "description": "Return the status of all known jobs (stale running jobs are reaped first).\n\nRequires the ``X-API-Key`` header (enforced by the app middleware).",
+        "operationId": "list_jobs_jobs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobStatusResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Jobs Jobs Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/metrics": {
       "get": {
         "summary": "Metrics",
