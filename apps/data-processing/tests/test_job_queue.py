@@ -13,6 +13,7 @@ network is required. They cover:
 """
 
 import asyncio
+import os
 import time
 
 from src.jobs.job_store import Job, JobStatus, JobStore
@@ -217,6 +218,7 @@ def test_queue_collapses_concurrent_duplicate():
 
 
 def test_jobs_status_endpoint_reports_result_and_404():
+    os.environ.setdefault("API_KEY", "test-key")
     from fastapi.testclient import TestClient
     from src.api.server import app, job_store
 
@@ -225,7 +227,7 @@ def test_jobs_status_endpoint_reports_result_and_404():
     job_store.mark_succeeded(job.id, {"answer": 42})
 
     with TestClient(app) as client:
-        resp = client.get(f"/jobs/{job.id}")
+        resp = client.get(f"/jobs/{job.id}", headers={"X-API-Key": "test-key"})
         assert resp.status_code == 200
         data = resp.json()
         assert data["job_id"] == job.id
@@ -234,4 +236,4 @@ def test_jobs_status_endpoint_reports_result_and_404():
         assert data["result_ref"] == f"/jobs/{job.id}"
 
         # Unknown job id -> 404.
-        assert client.get("/jobs/does-not-exist").status_code == 404
+        assert client.get("/jobs/does-not-exist", headers={"X-API-Key": "test-key"}).status_code == 404
