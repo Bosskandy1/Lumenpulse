@@ -1013,24 +1013,6 @@
         "operationId": "rebuild_kpi_snapshots_api_rebuild_kpi_snapshots_post",
         "parameters": [
           {
-            "name": "contract_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Contract ID",
-              "title": "Contract Id"
-            },
-            "description": "Contract ID"
-          },
-          {
             "name": "Authorization",
             "in": "header",
             "required": false,
@@ -1047,6 +1029,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RebuildRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1081,24 +1073,6 @@
         "operationId": "rebuild_all_api_rebuild_all_post",
         "parameters": [
           {
-            "name": "contract_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Contract ID",
-              "title": "Contract Id"
-            },
-            "description": "Contract ID"
-          },
-          {
             "name": "Authorization",
             "in": "header",
             "required": false,
@@ -1115,6 +1089,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RebuildRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1139,32 +1123,48 @@
         }
       }
     },
-    "/jobs/{job_id}": {
-      "get": {
+    "/api/rebuild/project-views": {
+      "post": {
         "tags": [
-          "jobs"
+          "rebuild"
         ],
-        "summary": "Get Job Status",
-        "description": "Return the current status and result reference for a single job.\n\nA job left ``running`` by a since-restarted worker is reported here as\n``failed`` (with an explanatory error) rather than appearing to hang -\nrestart loss is surfaced, never silent.\n\nRequires the ``X-API-Key`` header (enforced by the app middleware).",
-        "operationId": "get_job_status_jobs__job_id__get",
+        "summary": "Rebuild Project Views",
+        "operationId": "rebuild_project_views_api_rebuild_project_views_post",
         "parameters": [
           {
-            "name": "job_id",
-            "in": "path",
-            "required": true,
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
             "schema": {
-              "type": "string",
-              "title": "Job Id"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RebuildRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JobStatusResponse"
+                  "$ref": "#/components/schemas/RebuildResponse"
                 }
               }
             }
@@ -1182,25 +1182,117 @@
         }
       }
     },
-    "/jobs": {
-      "get": {
+    "/api/rebuild/contract-events": {
+      "post": {
         "tags": [
-          "jobs"
+          "rebuild"
         ],
-        "summary": "List Jobs",
-        "description": "Return the status of all known jobs (stale running jobs are reaped first).\n\nRequires the ``X-API-Key`` header (enforced by the app middleware).",
-        "operationId": "list_jobs_jobs_get",
+        "summary": "Rebuild Contract Events",
+        "operationId": "rebuild_contract_events_api_rebuild_contract_events_post",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RebuildRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/JobStatusResponse"
-                  },
-                  "type": "array",
-                  "title": "Response List Jobs Jobs Get"
+                  "$ref": "#/components/schemas/RebuildResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rebuild/metrics": {
+      "post": {
+        "tags": [
+          "rebuild"
+        ],
+        "summary": "Rebuild Metrics",
+        "operationId": "rebuild_metrics_api_rebuild_metrics_post",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RebuildRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RebuildResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -4073,6 +4165,51 @@
         "title": "OperationResponse",
         "description": "Response model for account operation."
       },
+      "RebuildRequest": {
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "title": "Dataset",
+            "description": "Dataset to rebuild"
+          },
+          "contract_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Id",
+            "description": "Contract ID to scope rebuild"
+          },
+          "force": {
+            "type": "boolean",
+            "title": "Force",
+            "description": "Force rebuild even if in progress",
+            "default": false
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key",
+            "description": "Idempotency key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset"
+        ],
+        "title": "RebuildRequest",
+        "description": "Request model for triggering a rebuild."
+      },
       "RebuildResponse": {
         "properties": {
           "status": {
@@ -4080,21 +4217,21 @@
             "title": "Status",
             "description": "Status of rebuild"
           },
-          "total_items": {
+          "totalItems": {
             "type": "integer",
-            "title": "Total Items",
+            "title": "Totalitems",
             "description": "Total items processed",
             "default": 0
           },
-          "processed_items": {
+          "processedItems": {
             "type": "integer",
-            "title": "Processed Items",
+            "title": "Processeditems",
             "description": "Items successfully processed",
             "default": 0
           },
-          "failed_items": {
+          "failedItems": {
             "type": "integer",
-            "title": "Failed Items",
+            "title": "Faileditems",
             "description": "Items that failed",
             "default": 0
           },
