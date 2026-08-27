@@ -6,8 +6,8 @@ mod storage;
 #[cfg(test)]
 mod test;
 
-use soroban_sdk::{contract, contractimpl, contracterror, Address, Env};
 use soroban_sdk::token::TokenClient;
+use soroban_sdk::{contract, contracterror, contractimpl, Address, Env};
 use storage::DataKey;
 
 const SWAP_FEE_BP: u32 = 30; // 0.3% swap fee in basis points (Uniswap v2 standard)
@@ -33,19 +33,20 @@ pub struct LiquidityPoolContract;
 #[contractimpl]
 impl LiquidityPoolContract {
     /// Initialize pool with two tokens
-    pub fn initialize(env: Env, admin: Address, token_0: Address, token_1: Address) -> Result<(), LiquidityPoolError> {
+    pub fn initialize(
+        env: Env,
+        admin: Address,
+        token_0: Address,
+        token_1: Address,
+    ) -> Result<(), LiquidityPoolError> {
         admin.require_auth();
         if env.storage().instance().has(&DataKey::Admin) {
             return Err(LiquidityPoolError::AlreadyInitialized);
         }
 
         env.storage().instance().set(&DataKey::Admin, &admin);
-        env.storage()
-            .instance()
-            .set(&DataKey::Token0, &token_0);
-        env.storage()
-            .instance()
-            .set(&DataKey::Token1, &token_1);
+        env.storage().instance().set(&DataKey::Token0, &token_0);
+        env.storage().instance().set(&DataKey::Token1, &token_1);
         env.storage().instance().extend_ttl(100, 100);
 
         events::PoolInitializedEvent {
@@ -367,8 +368,10 @@ impl LiquidityPoolContract {
 
         // Simulate 0.05% annual fee accrual on reserves
         let fee_accrual_bp = 5; // 0.05%
-        let accrued_0 = (reserve_0 * (fee_accrual_bp as i128) * (elapsed as i128)) / ((365 * 24 * 3600 as i128) * 10000);
-        let accrued_1 = (reserve_1 * (fee_accrual_bp as i128) * (elapsed as i128)) / ((365 * 24 * 3600 as i128) * 10000);
+        let accrued_0 = (reserve_0 * (fee_accrual_bp as i128) * (elapsed as i128))
+            / ((365 * 24 * 3600 as i128) * 10000);
+        let accrued_1 = (reserve_1 * (fee_accrual_bp as i128) * (elapsed as i128))
+            / ((365 * 24 * 3600 as i128) * 10000);
 
         // Track accrued fees
         let total_accrued_0: i128 = env

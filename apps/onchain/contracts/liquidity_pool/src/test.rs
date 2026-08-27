@@ -23,11 +23,11 @@ fn setup_test<'a>(
     env: &Env,
 ) -> (
     LiquidityPoolContractClient<'a>,
-    Address, // admin
-    Address, // token_0_addr
-    Address, // token_1_addr
-    TokenClient<'a>, // token_0_client
-    TokenClient<'a>, // token_1_client
+    Address,                // admin
+    Address,                // token_0_addr
+    Address,                // token_1_addr
+    TokenClient<'a>,        // token_0_client
+    TokenClient<'a>,        // token_1_client
     StellarAssetClient<'a>, // token_0_admin
     StellarAssetClient<'a>, // token_1_admin
 ) {
@@ -64,7 +64,10 @@ fn test_initialize_and_auth() {
 
     // Trying to initialize again should fail
     let res = client.try_initialize(&admin, &token_0, &token_1);
-    assert_eq!(res.err().unwrap().unwrap(), LiquidityPoolError::AlreadyInitialized);
+    assert_eq!(
+        res.err().unwrap().unwrap(),
+        LiquidityPoolError::AlreadyInitialized
+    );
 }
 
 #[test]
@@ -72,7 +75,16 @@ fn test_initial_liquidity_provision() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, admin, token_0_addr, token_1_addr, _token_0, _token_1, token_0_admin, token_1_admin) = setup_test(&env);
+    let (
+        client,
+        admin,
+        token_0_addr,
+        token_1_addr,
+        _token_0,
+        _token_1,
+        token_0_admin,
+        token_1_admin,
+    ) = setup_test(&env);
     client.initialize(&admin, &token_0_addr, &token_1_addr);
 
     let alice = Address::generate(&env);
@@ -95,7 +107,16 @@ fn test_subsequent_liquidity_provision() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, admin, token_0_addr, token_1_addr, _token_0, _token_1, token_0_admin, token_1_admin) = setup_test(&env);
+    let (
+        client,
+        admin,
+        token_0_addr,
+        token_1_addr,
+        _token_0,
+        _token_1,
+        token_0_admin,
+        token_1_admin,
+    ) = setup_test(&env);
     client.initialize(&admin, &token_0_addr, &token_1_addr);
 
     let alice = Address::generate(&env);
@@ -127,7 +148,16 @@ fn test_redemption() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, admin, token_0_addr, token_1_addr, _token_0, _token_1, token_0_admin, token_1_admin) = setup_test(&env);
+    let (
+        client,
+        admin,
+        token_0_addr,
+        token_1_addr,
+        _token_0,
+        _token_1,
+        token_0_admin,
+        token_1_admin,
+    ) = setup_test(&env);
     client.initialize(&admin, &token_0_addr, &token_1_addr);
 
     let alice = Address::generate(&env);
@@ -165,7 +195,16 @@ fn test_proportional_withdrawal_unequal_stakes() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, admin, token_0_addr, token_1_addr, _token_0, _token_1, token_0_admin, token_1_admin) = setup_test(&env);
+    let (
+        client,
+        admin,
+        token_0_addr,
+        token_1_addr,
+        _token_0,
+        _token_1,
+        token_0_admin,
+        token_1_admin,
+    ) = setup_test(&env);
     client.initialize(&admin, &token_0_addr, &token_1_addr);
 
     let alice = Address::generate(&env);
@@ -194,7 +233,8 @@ fn test_proportional_withdrawal_unequal_stakes() {
     let charlie_lp = client.add_liquidity(&charlie, &4_000, &4_000, &3_999);
     assert_eq!(charlie_lp, 3_999);
 
-    let lp_supply = client.lp_balance(&alice) + client.lp_balance(&bob) + client.lp_balance(&charlie);
+    let lp_supply =
+        client.lp_balance(&alice) + client.lp_balance(&bob) + client.lp_balance(&charlie);
     assert_eq!(lp_supply, 19_998);
 
     // Redeem Bob's stake (30% of reserves)
@@ -215,7 +255,8 @@ fn test_first_depositor_share_inflation_mitigation() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, admin, token_0_addr, token_1_addr, token_0, token_1, token_0_admin, token_1_admin) = setup_test(&env);
+    let (client, admin, token_0_addr, token_1_addr, token_0, token_1, token_0_admin, token_1_admin) =
+        setup_test(&env);
     client.initialize(&admin, &token_0_addr, &token_1_addr);
 
     let attacker = Address::generate(&env);
@@ -258,7 +299,8 @@ fn test_checked_arithmetic_overflow_underflow() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, admin, token_0_addr, token_1_addr, _, _, token_0_admin, token_1_admin) = setup_test(&env);
+    let (client, admin, token_0_addr, token_1_addr, _, _, token_0_admin, token_1_admin) =
+        setup_test(&env);
     client.initialize(&admin, &token_0_addr, &token_1_addr);
 
     let alice = Address::generate(&env);
@@ -267,21 +309,36 @@ fn test_checked_arithmetic_overflow_underflow() {
 
     // 1. Call add_liquidity with negative amount_0
     let res = client.try_add_liquidity(&alice, &-1000, &1000, &100);
-    assert_eq!(res.err().unwrap().unwrap(), LiquidityPoolError::InvalidAmount);
+    assert_eq!(
+        res.err().unwrap().unwrap(),
+        LiquidityPoolError::InvalidAmount
+    );
 
     // 2. Call add_liquidity with zero amount_1
     let res = client.try_add_liquidity(&alice, &1000, &0, &100);
-    assert_eq!(res.err().unwrap().unwrap(), LiquidityPoolError::InvalidAmount);
+    assert_eq!(
+        res.err().unwrap().unwrap(),
+        LiquidityPoolError::InvalidAmount
+    );
 
     // 3. Call remove_liquidity with zero LP amount
     let res = client.try_remove_liquidity(&alice, &0, &100, &100);
-    assert_eq!(res.err().unwrap().unwrap(), LiquidityPoolError::InvalidAmount);
+    assert_eq!(
+        res.err().unwrap().unwrap(),
+        LiquidityPoolError::InvalidAmount
+    );
 
     // 4. Call remove_liquidity with negative LP amount
     let res = client.try_remove_liquidity(&alice, &-500, &100, &100);
-    assert_eq!(res.err().unwrap().unwrap(), LiquidityPoolError::InvalidAmount);
+    assert_eq!(
+        res.err().unwrap().unwrap(),
+        LiquidityPoolError::InvalidAmount
+    );
 
     // 5. Try to remove more LP tokens than balance
     let res = client.try_remove_liquidity(&alice, &1000, &100, &100);
-    assert_eq!(res.err().unwrap().unwrap(), LiquidityPoolError::InsufficientBalance);
+    assert_eq!(
+        res.err().unwrap().unwrap(),
+        LiquidityPoolError::InsufficientBalance
+    );
 }
