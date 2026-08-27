@@ -59,14 +59,10 @@ export class ModelRetrainingService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
-    this.pythonApiUrl = this.configService.get<string>(
-      'PYTHON_API_URL',
-      config.python.apiUrl || 'http://localhost:8000',
-    );
-    this.apiKey = this.configService.get<string>(
-      'PYTHON_API_KEY',
-      config.python.apiKey || '',
-    );
+    this.pythonApiUrl =
+      this.configService.get<string>('PYTHON_API_URL') || config.python.apiUrl;
+    this.apiKey =
+      this.configService.get<string>('PYTHON_API_KEY') || config.python.apiKey || '';
     this.pollIntervalMs = this.configService.get<number>(
       'PYTHON_JOB_POLL_INTERVAL_MS',
       2_000,

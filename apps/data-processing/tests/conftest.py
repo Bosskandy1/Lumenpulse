@@ -6,6 +6,7 @@ import os
 
 # Skip FinBERT download/load in default test runs (CI and local pytest).
 os.environ.setdefault("SENTIMENT_DISABLE_TRANSFORMER", "1")
+os.environ.setdefault("API_KEY", "test-key")
 
 import pytest
 import sys

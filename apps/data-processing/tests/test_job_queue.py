@@ -218,7 +218,6 @@ def test_queue_collapses_concurrent_duplicate():
 
 
 def test_jobs_status_endpoint_reports_result_and_404():
-    os.environ.setdefault("API_KEY", "test-key")
     from fastapi.testclient import TestClient
     from src.api.server import app, job_store
 
