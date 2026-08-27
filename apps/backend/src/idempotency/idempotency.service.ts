@@ -89,7 +89,7 @@ export class IdempotencyService {
     });
 
     try {
-      await this.repo.insert(claim);
+      await this.repo.save(claim);
     } catch (err) {
       // Lost the race to a concurrent request. Re-read and classify again.
       const winner = await this.repo.findOne({
@@ -111,7 +111,8 @@ export class IdempotencyService {
     responseStatus: number,
     responseBody: unknown,
   ): Promise<void> {
-    await this.repo.update(record.id, {
+    await this.repo.save({
+      ...record,
       status: IdempotencyRecordStatus.COMPLETED,
       responseStatus,
       responseBody,
