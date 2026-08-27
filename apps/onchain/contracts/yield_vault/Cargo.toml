@@ -9,6 +9,7 @@ crate-type = ["cdylib"]
 [dependencies]
 soroban-sdk = { workspace = true }
 idempotency-guard = { path = "../idempotency-guard" }
+cross-contract-view = { path = "../cross-contract-view" }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
