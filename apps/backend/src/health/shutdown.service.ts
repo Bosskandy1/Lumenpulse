@@ -44,9 +44,8 @@ export class ShutdownService
     );
     this.shuttingDown = true;
 
-    // Coerce the config value to a number to avoid "unsafe argument" warnings
-    const rawGrace = config.SHUTDOWN_GRACE_PERIOD_MS;
-    const gracePeriodMs = Number(rawGrace ?? 0);
+    // Use the correctly typed config value
+    const gracePeriodMs = config.shutdownGracePeriodMs;
 
     if (gracePeriodMs > 0) {
       this.logger.log(

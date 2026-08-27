@@ -1093,6 +1093,7 @@ export const config = Object.freeze({
       ? resolvedCorsOrigin[0]
       : resolvedCorsOrigin,
   ),
+  shutdownGracePeriodMs: parsedEnv.SHUTDOWN_GRACE_PERIOD_MS,
   database: Object.freeze({
     host: parsedEnv.DB_HOST,
     port: parsedEnv.DB_PORT,
