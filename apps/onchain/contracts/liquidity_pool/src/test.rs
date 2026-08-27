@@ -1,7 +1,6 @@
 use super::*;
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::token::{StellarAssetClient, TokenClient};
-use soroban_sdk::{Address, Env, Symbol};
+use soroban_sdk::{symbol_short, Address, Env};
 
 #[test]
 fn test_reentrancy_guard_add_liquidity_rejects_when_locked() {
@@ -24,6 +23,6 @@ fn test_reentrancy_guard_add_liquidity_rejects_when_locked() {
             .set(&symbol_short!("REENTRANT"), &true);
     });
 
-    let result = client.try_add_liquidity(&100i128, &100i128, &0i128);
-    assert_eq!(result, Err(Ok(Symbol::new(&env, "reentrancy"))));
+    let result = client.try_add_liquidity(&admin, &100i128, &100i128, &0i128);
+    assert_eq!(result, Err(Ok(LiquidityPoolError::Reentrancy)));
 }

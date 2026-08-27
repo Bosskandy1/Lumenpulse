@@ -22,6 +22,7 @@ pub enum LiquidityPoolError {
     InvalidAmount = 3,
     SlippageExceeded = 4,
     InsufficientBalance = 5,
+    Reentrancy = 6,
 }
 
 #[contract]
@@ -33,11 +34,11 @@ pub struct LiquidityPoolContract;
 /// - Standard LP token mechanics
 #[contractimpl]
 impl LiquidityPoolContract {
-    fn with_reentrancy_guard<T, F>(env: &Env, f: F) -> Result<T, Symbol>
+    fn with_reentrancy_guard<T, F>(env: &Env, f: F) -> Result<T, LiquidityPoolError>
     where
-        F: FnOnce() -> Result<T, Symbol>,
+        F: FnOnce() -> Result<T, LiquidityPoolError>,
     {
-        acquire_reentrancy(env).map_err(|_| Symbol::new(env, "reentrancy"))?;
+        acquire_reentrancy(env).map_err(|_| LiquidityPoolError::Reentrancy)?;
         let result = f();
         release_reentrancy(env);
         result
@@ -77,30 +78,30 @@ impl LiquidityPoolContract {
         amount_0: i128,
         amount_1: i128,
         min_lp: i128,
-    ) -> Result<i128, Symbol> {
+    ) -> Result<i128, LiquidityPoolError> {
         Self::with_reentrancy_guard(&env, || {
             if amount_0 <= 0 || amount_1 <= 0 {
-                return Err(Symbol::new(&env, "invalid_amount"));
+                return Err(LiquidityPoolError::InvalidAmount);
             }
 
             let token_0_addr: Address = env
                 .storage()
                 .instance()
                 .get(&DataKey::Token0)
-                .ok_or_else(|| Symbol::new(&env, "not_initialized"))?;
+                .ok_or(LiquidityPoolError::NotInitialized)?;
 
             let token_1_addr: Address = env
                 .storage()
                 .instance()
                 .get(&DataKey::Token1)
-                .ok_or_else(|| Symbol::new(&env, "not_initialized"))?;
+                .ok_or(LiquidityPoolError::NotInitialized)?;
 
             // Transfer tokens
             let token_0 = TokenClient::new(&env, &token_0_addr);
             let token_1 = TokenClient::new(&env, &token_1_addr);
 
-            token_0.transfer(&env.invoker(), &env.current_contract_address(), &amount_0);
-            token_1.transfer(&env.invoker(), &env.current_contract_address(), &amount_1);
+            token_0.transfer(&from, env.current_contract_address(), &amount_0);
+            token_1.transfer(&from, env.current_contract_address(), &amount_1);
 
             // Calculate LP tokens
             let reserve_0: i128 = env
@@ -136,7 +137,7 @@ impl LiquidityPoolContract {
             };
 
             if lp_tokens < min_lp {
-                return Err(Symbol::new(&env, "slippage_exceeded"));
+                return Err(LiquidityPoolError::SlippageExceeded);
             }
 
             // Update state
@@ -153,10 +154,10 @@ impl LiquidityPoolContract {
             let user_lp: i128 = env
                 .storage()
                 .persistent()
-                .get(&DataKey::UserLPBalance(env.invoker()))
+                .get(&DataKey::UserLPBalance(from.clone()))
                 .unwrap_or(0);
             env.storage().persistent().set(
-                &DataKey::UserLPBalance(env.invoker()),
+                &DataKey::UserLPBalance(from.clone()),
                 &(user_lp + lp_tokens),
             );
 
@@ -164,7 +165,7 @@ impl LiquidityPoolContract {
             Self::accrue_protocol_fees(&env);
 
             events::LiquidityAddedEvent {
-                user: env.invoker(),
+                user: from.clone(),
                 amount_0,
                 amount_1,
                 lp_tokens,
@@ -320,8 +321,8 @@ impl LiquidityPoolContract {
             let token_0 = TokenClient::new(&env, &token_0_addr);
             let token_1 = TokenClient::new(&env, &token_1_addr);
 
-            token_0.transfer(&env.invoker(), &env.current_contract_address(), &amount_in);
-            token_1.transfer(&env.current_contract_address(), &env.invoker(), &amount_out);
+            token_0.transfer(&from, env.current_contract_address(), &amount_in);
+            token_1.transfer(&env.current_contract_address(), &from, &amount_out);
 
             // Update reserves (fee stays in pool as yield to LPs)
             env.storage()
@@ -332,7 +333,7 @@ impl LiquidityPoolContract {
                 .set(&DataKey::Reserve1, &(reserve_1 - amount_out));
 
             events::SwapEvent {
-                user: env.invoker(),
+                user: from.clone(),
                 amount_in,
                 amount_out,
             }
