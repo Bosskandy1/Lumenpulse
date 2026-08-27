@@ -47,7 +47,25 @@ describe('ModelRetrainingService', () => {
         models: { sentiment: 'v1.1' },
       };
 
-      (httpService.post as jest.Mock).mockReturnValue(of({ data: mockResult }));
+      (httpService.post as jest.Mock).mockReturnValue(
+        of({
+          data: {
+            job_id: 'job-test-1',
+            status: 'queued',
+            status_url: '/jobs/job-test-1',
+          },
+        }),
+      );
+      (httpService.get as jest.Mock).mockReturnValue(
+        of({
+          data: {
+            job_id: 'job-test-1',
+            type: 'retrain',
+            status: 'succeeded',
+            result: mockResult,
+          },
+        }),
+      );
 
       const result = await service.triggerRetraining(true);
 
@@ -57,7 +75,7 @@ describe('ModelRetrainingService', () => {
         { force: true },
         {
           headers: { 'X-API-Key': 'test-key' },
-          timeout: 300_000,
+          timeout: 15_000,
         },
       );
     });
