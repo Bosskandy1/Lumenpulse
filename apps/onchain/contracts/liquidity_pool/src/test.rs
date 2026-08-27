@@ -19,7 +19,9 @@ fn test_reentrancy_guard_add_liquidity_rejects_when_locked() {
 
     // Simulate reentrant lock state
     env.as_contract(&pool_id, || {
-        env.storage().instance().set(&symbol_short!("REENTRANT"), &true);
+        env.storage()
+            .instance()
+            .set(&symbol_short!("REENTRANT"), &true);
     });
 
     let result = client.try_add_liquidity(&100i128, &100i128, &0i128);

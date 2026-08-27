@@ -6,10 +6,10 @@ mod storage;
 #[cfg(test)]
 mod test;
 
+use reentrancy_guard::{acquire as acquire_reentrancy, release as release_reentrancy};
 use soroban_sdk::token::TokenClient;
 use soroban_sdk::{contract, contracterror, contractimpl, Address, Env};
 use storage::DataKey;
-use reentrancy_guard::{acquire as acquire_reentrancy, release as release_reentrancy};
 
 const SWAP_FEE_BP: u32 = 30; // 0.3% swap fee in basis points (Uniswap v2 standard)
 
