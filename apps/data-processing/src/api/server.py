@@ -139,6 +139,38 @@ except Exception as exc:
     postgres_service = None
     logger.warning("PostgreSQL service unavailable for /news endpoint: %s", exc)
 
+import hashlib
+from typing import Optional
+
+def _log_prediction(
+    request_id: str,
+    model_type: str,
+    model_version: str,
+    input_text: str,
+    output: Dict[str, Any],
+    latency_ms: float,
+):
+    """Log prediction to database using PostgresService."""
+    if not postgres_service:
+        return
+        
+    try:
+        store_raw_input = os.getenv("LOG_PREDICTION_RAW_INPUT", "false").lower() == "true"
+        raw_input = input_text if store_raw_input else None
+        input_hash = hashlib.sha256(input_text.encode("utf-8")).hexdigest()
+        
+        postgres_service.log_prediction(
+            request_id=request_id,
+            model_type=model_type,
+            model_version=model_version,
+            input_hash=input_hash,
+            output=output,
+            latency_ms=latency_ms,
+            raw_input=raw_input,
+        )
+    except Exception as e:
+        logger.error(f"Failed to log prediction (non-fatal) in helper: {e}")
+
 
 # ---------------------------------------------------------------------------
 # Request/Response models
@@ -404,18 +436,8 @@ async def get_contributor_activity_timeline(
 async def analyze_text(body: AnalyzeRequest, request: Request) -> AnalyzeResponse:
     """
     Analyze the sentiment of provided text.
-
-    This endpoint connects to your existing SentimentAnalyzer class
-    and returns the compound_score as the sentiment value.
-
-    Args:
-        request: Contains the text to analyze and optional asset filter
-
-    Returns:
-        sentiment: float between -1 and 1
-        asset_codes: List of asset codes found in text
-        sentiment_label: positive/negative/neutral
     """
+    start_time = time.monotonic()
     try:
         # Validate input
         if not body.text or not body.text.strip():
@@ -431,6 +453,20 @@ async def analyze_text(body: AnalyzeRequest, request: Request) -> AnalyzeRespons
 
         # Build visual indicator
         ind = _indicator_mapper.score_to_indicator(result.compound_score)
+
+        # Log prediction for auditability
+        _log_prediction(
+            request_id=correlation_id_ctx.get(generate_correlation_id()),
+            model_type="sentiment",
+            model_version=get_current_version("sentiment") or "1.0.0",
+            input_text=body.text,
+            output={
+                "sentiment": result.compound_score,
+                "asset_codes": result.asset_codes,
+                "sentiment_label": result.sentiment_label,
+            },
+            latency_ms=(time.monotonic() - start_time) * 1000,
+        )
 
         # Return enhanced response with asset information
         return AnalyzeResponse(
@@ -502,12 +538,31 @@ async def get_asset_analysis(
 @limiter.limit("10/minute") if limiter else lambda x: x
 async def analyze_batch(request: Request, texts: list[str], asset: Optional[str] = None) -> Dict[str, Any]:
     """Batch analyze multiple texts with optional asset filter"""
+    start_time = time.monotonic()
     try:
         if not texts:
             raise HTTPException(status_code=400, detail="Texts list cannot be empty")
 
         results = sentiment_analyzer.analyze_batch(texts, asset)
         summary = sentiment_analyzer.get_sentiment_summary(results)
+
+        req_id = correlation_id_ctx.get(generate_correlation_id())
+        model_version = get_current_version("sentiment") or "1.0.0"
+        latency_ms = (time.monotonic() - start_time) * 1000
+        
+        for text, result in zip(texts, results):
+            _log_prediction(
+                request_id=req_id,
+                model_type="sentiment",
+                model_version=model_version,
+                input_text=text,
+                output={
+                    "sentiment": result.compound_score,
+                    "asset_codes": result.asset_codes,
+                    "sentiment_label": result.sentiment_label,
+                },
+                latency_ms=latency_ms / len(texts),  # Average latency per item
+            )
 
         return {
             "results": [r.to_dict() for r in results],
@@ -517,6 +572,7 @@ async def analyze_batch(request: Request, texts: list[str], asset: Optional[str]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @app.get("/sentiment/legend")
@@ -1027,6 +1083,36 @@ async def shadow_clear_comparison_log(
 # Predictive analytics endpoint (forecast market trends)
 # ---------------------------------------------------------------------------
 
+@app.get("/model/prediction-logs")
+@limiter.limit("20/minute") if limiter else lambda x: x
+async def get_prediction_logs(
+    request: Request,
+    model_version: str = Query(..., description="Model version to filter by"),
+    model_type: Optional[str] = Query(None, description="Optional model type"),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+) -> Dict[str, Any]:
+    """
+    Query prediction logs by model version to isolate suspect outputs.
+    Requires X-API-Key header.
+    """
+    if postgres_service is None:
+        raise HTTPException(status_code=503, detail="Database service unavailable")
+        
+    logs = postgres_service.query_prediction_logs(
+        model_version=model_version,
+        model_type=model_type,
+        limit=limit,
+        offset=offset,
+    )
+    
+    return {
+        "model_version": model_version,
+        "model_type": model_type,
+        "count": len(logs),
+        "logs": logs
+    }
+
 
 class ForecastResponse(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
@@ -1059,6 +1145,7 @@ async def get_forecast(request: Request) -> ForecastResponse:
     import asyncio
 
     logger.info(f"Forecast requested | client_ip={request.client.host}")
+    start_time = time.monotonic()
 
     def _run_forecast():
         from src.analytics.forecaster import SentimentForecaster
@@ -1073,7 +1160,17 @@ async def get_forecast(request: Request) -> ForecastResponse:
         logger.error(f"Forecast failed: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Forecast error: {exc}")
 
-    return ForecastResponse(**result.to_dict())
+    output_dict = result.to_dict()
+    _log_prediction(
+        request_id=correlation_id_ctx.get(generate_correlation_id()),
+        model_type="forecast",
+        model_version=output_dict.get("model_backend", "1.0.0"),
+        input_text="no_input_get_request",
+        output=output_dict,
+        latency_ms=(time.monotonic() - start_time) * 1000,
+    )
+
+    return ForecastResponse(**output_dict)
 
 
 # ---------------------------------------------------------------------------
@@ -1130,6 +1227,7 @@ async def analyze_correlation(
     Returns correlation scores (-1 to 1) and scatter plot data points.
     Requires X-API-Key header.
     """
+    start_time = time.monotonic()
     sentiment_list = [{"timestamp": dp.timestamp, "score": dp.score} for dp in body.sentiment_data]
     price_list = (
         [{"timestamp": dp.timestamp, "value": dp.value} for dp in body.price_data]
@@ -1155,6 +1253,15 @@ async def analyze_correlation(
         lag_hours=body.lag_hours,
     )
 
+    _log_prediction(
+        request_id=correlation_id_ctx.get(generate_correlation_id()),
+        model_type="correlation_analysis",
+        model_version="1.0.0",
+        input_text=body.json(),
+        output=result,
+        latency_ms=(time.monotonic() - start_time) * 1000,
+    )
+
     return CorrelationResponse(
         price_correlation=result.get("price_correlation"),
         volume_correlation=result.get("volume_correlation"),
@@ -1174,6 +1281,7 @@ async def analyze_lag_correlation(
     Returns the best lag hours and correlation strength for predicting market changes.
     Requires X-API-Key header.
     """
+    start_time = time.monotonic()
     sentiment_list = [{"timestamp": dp.timestamp, "score": dp.score} for dp in body.sentiment_data]
     metric_list = [{"timestamp": dp.timestamp, "value": dp.value} for dp in body.metric_data]
 
@@ -1187,6 +1295,15 @@ async def analyze_lag_correlation(
         metric_data=metric_list,
         metric_type=body.metric_type,
         max_lag_hours=body.max_lag_hours,
+    )
+
+    _log_prediction(
+        request_id=correlation_id_ctx.get(generate_correlation_id()),
+        model_type="lag_analysis",
+        model_version="1.0.0",
+        input_text=body.json(),
+        output=result,
+        latency_ms=(time.monotonic() - start_time) * 1000,
     )
 
     return LagAnalysisResponse(

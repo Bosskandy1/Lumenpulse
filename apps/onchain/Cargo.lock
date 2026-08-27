@@ -2276,6 +2276,7 @@ name = "yield-vault"
 version = "0.1.0"
 dependencies = [
  "idempotency-guard",
+ "reentrancy-guard",
  "soroban-sdk",
 ]
 
