@@ -20,16 +20,20 @@ export class ShutdownService
     return this.shuttingDown;
   }
 
-  onModuleDestroy() {
+  // mark as async so we can await job.stop() (prevents no-floating-promises)
+  async onModuleDestroy(): Promise<void> {
     this.logger.log('Application is destroying modules. Stopping schedulers...');
     try {
-      const cronJobs = this.schedulerRegistry.getCronJobs();
-      cronJobs.forEach((job, name) => {
+      // schedulerRegistry.getCronJobs() returns a Map-like iterable
+      // iterate and await each stop call to avoid floating promises
+      for (const [name, job] of this.schedulerRegistry.getCronJobs()) {
         this.logger.log(`Stopping cron job: ${name}`);
-        job.stop();
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+        // await even if stop may be synchronous — this is safe
+        await job.stop();
+      }
+    } catch (err: unknown) {
+      // narrow unknown before using it to avoid unsafe assignment/usage
+      const errorMessage = err instanceof Error ? err.message : String(err);
       this.logger.warn(`Failed to stop cron jobs: ${errorMessage}`);
     }
   }
@@ -40,12 +44,16 @@ export class ShutdownService
     );
     this.shuttingDown = true;
 
-    const gracePeriodMs = config.SHUTDOWN_GRACE_PERIOD_MS;
+    // Coerce the config value to a number to avoid "unsafe argument" warnings
+    const rawGrace = config.SHUTDOWN_GRACE_PERIOD_MS;
+    const gracePeriodMs = Number(rawGrace ?? 0);
+
     if (gracePeriodMs > 0) {
       this.logger.log(
         `Readiness probe is now unready. Waiting ${gracePeriodMs}ms for inflight requests to drain...`,
       );
-      await new Promise((resolve) => setTimeout(resolve, gracePeriodMs));
+      // Use a Promise wrapper with setTimeout; gracePeriodMs is now a number
+      await new Promise<void>((resolve) => setTimeout(resolve, gracePeriodMs));
       this.logger.log('Drain period completed. Proceeding to close HTTP server and database connections.');
     }
   }
