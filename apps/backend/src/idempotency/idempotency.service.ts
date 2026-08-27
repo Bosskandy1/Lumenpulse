@@ -89,7 +89,7 @@ export class IdempotencyService {
     });
 
     try {
-      await this.repo.insert(claim as any);
+      await this.repo.insert(claim);
     } catch (err) {
       // Lost the race to a concurrent request. Re-read and classify again.
       const winner = await this.repo.findOne({
@@ -116,7 +116,7 @@ export class IdempotencyService {
       responseStatus,
       responseBody,
       completedAt: new Date(),
-    } as any);
+    });
   }
 
   /** Drop an in_progress claim after a failure so the client can retry. */

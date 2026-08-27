@@ -29,7 +29,8 @@ export class ShutdownService
         job.stop();
       });
     } catch (error) {
-      this.logger.warn(`Failed to stop cron jobs: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Failed to stop cron jobs: ${errorMessage}`);
     }
   }
 
