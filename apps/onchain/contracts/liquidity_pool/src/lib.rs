@@ -88,8 +88,8 @@ impl LiquidityPoolContract {
         let token_0 = TokenClient::new(&env, &token_0_addr);
         let token_1 = TokenClient::new(&env, &token_1_addr);
 
-        token_0.transfer(&from, &env.current_contract_address(), &amount_0);
-        token_1.transfer(&from, &env.current_contract_address(), &amount_1);
+        token_0.transfer(&from, env.current_contract_address(), &amount_0);
+        token_1.transfer(&from, env.current_contract_address(), &amount_1);
 
         // Calculate LP tokens
         let reserve_0: i128 = env
@@ -308,7 +308,7 @@ impl LiquidityPoolContract {
         let token_0 = TokenClient::new(&env, &token_0_addr);
         let token_1 = TokenClient::new(&env, &token_1_addr);
 
-        token_0.transfer(&from, &env.current_contract_address(), &amount_in);
+        token_0.transfer(&from, env.current_contract_address(), &amount_in);
         token_1.transfer(&env.current_contract_address(), &from, &amount_out);
 
         // Update reserves (fee stays in pool as yield to LPs)
@@ -335,7 +335,7 @@ impl LiquidityPoolContract {
             return 0;
         }
         let mut x = n;
-        let mut y = (x + 1) / 2;
+        let mut y = x.div_ceil(2);
         while y < x {
             x = y;
             y = (x + n / x) / 2;
@@ -369,9 +369,9 @@ impl LiquidityPoolContract {
         // Simulate 0.05% annual fee accrual on reserves
         let fee_accrual_bp = 5; // 0.05%
         let accrued_0 = (reserve_0 * (fee_accrual_bp as i128) * (elapsed as i128))
-            / ((365 * 24 * 3600 as i128) * 10000);
+            / ((365 * 24 * 3600_i128) * 10000);
         let accrued_1 = (reserve_1 * (fee_accrual_bp as i128) * (elapsed as i128))
-            / ((365 * 24 * 3600 as i128) * 10000);
+            / ((365 * 24 * 3600_i128) * 10000);
 
         // Track accrued fees
         let total_accrued_0: i128 = env
