@@ -553,6 +553,12 @@ const envSchema = z
       .min(1)
       .default(30_000),
     IDEMPOTENCY_CLEANUP_CRON: z.string().trim().default('0 3 * * *'),
+
+    SHUTDOWN_GRACE_PERIOD_MS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(15_000),
   })
   .superRefine((values, context) => {
     if (values.NODE_ENV === 'production' && !values.CORS_ORIGIN) {
@@ -1087,6 +1093,7 @@ export const config = Object.freeze({
       ? resolvedCorsOrigin[0]
       : resolvedCorsOrigin,
   ),
+  shutdownGracePeriodMs: parsedEnv.SHUTDOWN_GRACE_PERIOD_MS,
   database: Object.freeze({
     host: parsedEnv.DB_HOST,
     port: parsedEnv.DB_PORT,

@@ -74,6 +74,22 @@ The backend includes:
 - Safe error formatting with a shared `{ code, message, details, requestId }` contract
 - Request ID propagation through the `X-Request-Id` response header
 
+## Graceful Shutdown & Deployment Configuration
+
+The backend natively supports graceful shutdown on `SIGTERM` and `SIGINT` signals, which handles draining in-flight requests and cleanly stopping background processes.
+
+**Drain Sequence:**
+1. Readiness probe (`/health/ready`) immediately reports unready (`503 Service Unavailable`).
+2. Schedulers and queue consumers stop accepting new work immediately.
+3. The server waits for `SHUTDOWN_GRACE_PERIOD_MS` (default: 15s) to allow the load balancer/Kubernetes to remove the pod from the pool and let active requests finish. During this period, the liveness probe (`/health/live`) continues to report healthy.
+4. HTTP server closes.
+5. Database and Redis connections close cleanly.
+
+**Required Kubernetes Probe Configuration:**
+Deployments should configure separate readiness and liveness endpoints instead of using the combined `/health` endpoint:
+- **Liveness:** `GET /health/live`
+- **Readiness:** `GET /health/ready`
+
 Key environment variables:
 
 ```bash
