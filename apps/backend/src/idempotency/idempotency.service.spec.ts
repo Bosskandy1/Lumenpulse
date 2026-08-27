@@ -14,8 +14,7 @@ describe('IdempotencyService', () => {
       Repository<IdempotencyRecord>,
       | 'findOne'
       | 'create'
-      | 'insert'
-      | 'update'
+      | 'save'
       | 'delete'
       | 'createQueryBuilder'
     >
@@ -44,8 +43,7 @@ describe('IdempotencyService', () => {
     repo = {
       findOne: jest.fn(),
       create: jest.fn(),
-      insert: jest.fn(),
-      update: jest.fn(),
+      save: jest.fn(),
       delete: jest.fn(),
       createQueryBuilder: jest.fn(),
     };
@@ -68,7 +66,7 @@ describe('IdempotencyService', () => {
       repo.findOne.mockResolvedValue(null);
       const claim = record({ status: IdempotencyRecordStatus.IN_PROGRESS });
       repo.create.mockReturnValue(claim);
-      repo.insert.mockResolvedValue({} as never);
+      repo.save.mockResolvedValue({} as never);
 
       const outcome = await service.acquire(
         'key-1',
@@ -78,7 +76,7 @@ describe('IdempotencyService', () => {
       );
 
       expect(outcome.kind).toBe('acquired');
-      expect(repo.insert).toHaveBeenCalledTimes(1);
+      expect(repo.save).toHaveBeenCalledTimes(1);
     });
 
     it('replays the stored response for a completed key with the same body', async () => {
@@ -92,7 +90,7 @@ describe('IdempotencyService', () => {
       );
 
       expect(outcome).toMatchObject({ kind: 'replay' });
-      expect(repo.insert).not.toHaveBeenCalled();
+      expect(repo.save).not.toHaveBeenCalled();
     });
 
     it('rejects a completed key reused with a different body', async () => {
@@ -114,7 +112,7 @@ describe('IdempotencyService', () => {
       );
       const claim = record({ status: IdempotencyRecordStatus.IN_PROGRESS });
       repo.create.mockReturnValue(claim);
-      repo.insert.mockResolvedValue({} as never);
+      repo.save.mockResolvedValue({} as never);
 
       const outcome = await service.acquire(
         'key-1',
@@ -140,7 +138,7 @@ describe('IdempotencyService', () => {
       );
 
       expect(outcome.kind).toBe('in-progress');
-      expect(repo.insert).not.toHaveBeenCalled();
+      expect(repo.save).not.toHaveBeenCalled();
     });
 
     it('reclaims a claim whose lease has expired', async () => {
@@ -152,7 +150,7 @@ describe('IdempotencyService', () => {
       );
       const claim = record({ status: IdempotencyRecordStatus.IN_PROGRESS });
       repo.create.mockReturnValue(claim);
-      repo.insert.mockResolvedValue({} as never);
+      repo.save.mockResolvedValue({} as never);
 
       const outcome = await service.acquire(
         'key-1',
@@ -168,7 +166,7 @@ describe('IdempotencyService', () => {
     it('re-classifies the winner when it loses the insert race', async () => {
       repo.findOne.mockResolvedValueOnce(null);
       repo.create.mockReturnValue(record());
-      repo.insert.mockRejectedValue(
+      repo.save.mockRejectedValue(
         new Error('duplicate key value violates unique constraint'),
       );
       repo.findOne.mockResolvedValueOnce(record());
@@ -186,12 +184,11 @@ describe('IdempotencyService', () => {
 
   describe('complete', () => {
     it('persists the response on the record', async () => {
-      repo.update.mockResolvedValue({ affected: 1 } as never);
+      repo.save.mockResolvedValue({} as never);
 
       await service.complete(record(), 201, { ok: true });
 
-      expect(repo.update).toHaveBeenCalledWith(
-        'record-id',
+      expect(repo.save).toHaveBeenCalledWith(
         expect.objectContaining({
           status: IdempotencyRecordStatus.COMPLETED,
           responseStatus: 201,
