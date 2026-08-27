@@ -10,6 +10,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   setupApp(app);
 
+  // Enable graceful shutdown hooks
+  app.enableShutdownHooks();
+
   // URI versioning: /v1/config/stellar, /v2/... etc.
   app.enableVersioning({ type: VersioningType.URI });
 

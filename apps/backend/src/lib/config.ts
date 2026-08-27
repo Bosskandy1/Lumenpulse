@@ -553,6 +553,12 @@ const envSchema = z
       .min(1)
       .default(30_000),
     IDEMPOTENCY_CLEANUP_CRON: z.string().trim().default('0 3 * * *'),
+
+    SHUTDOWN_GRACE_PERIOD_MS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(15_000),
   })
   .superRefine((values, context) => {
     if (values.NODE_ENV === 'production' && !values.CORS_ORIGIN) {
