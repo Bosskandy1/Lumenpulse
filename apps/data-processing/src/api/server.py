@@ -4,7 +4,10 @@ FastAPI server to expose sentiment analysis as an HTTP API
 for the Node.js backend to consume.
 """
 
+import asyncio
+import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, HTTPException, Request, Response, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
@@ -88,6 +91,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------------------------
+# Batch inference backpressure configuration (Issue #1240)
+# ---------------------------------------------------------------------------
+MAX_BATCH_SIZE = int(os.getenv("BATCH_MAX_SIZE", "200"))
+MAX_CONCURRENT_BATCHES = int(os.getenv("BATCH_MAX_CONCURRENT", "4"))
+_batch_semaphore = asyncio.Semaphore(MAX_CONCURRENT_BATCHES)
+_batch_executor = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_BATCHES)
 
 
 @app.middleware("http")
@@ -533,45 +545,119 @@ async def get_asset_analysis(
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
-# Optional: Batch analysis endpoint if needed
+# ---------------------------------------------------------------------------
+# Batch inference endpoint with backpressure (Issue #1240)
+# ---------------------------------------------------------------------------
 @app.post("/analyze-batch")
 @limiter.limit("10/minute") if limiter else lambda x: x
 async def analyze_batch(request: Request, texts: list[str], asset: Optional[str] = None) -> Dict[str, Any]:
-    """Batch analyze multiple texts with optional asset filter"""
+    """Batch analyze multiple texts with optional asset filter.
+
+    Backpressure controls:
+    - ``MAX_BATCH_SIZE`` (env ``BATCH_MAX_SIZE``, default 200): oversized
+      requests are rejected with 413.
+    - ``MAX_CONCURRENT_BATCHES`` (env ``BATCH_MAX_CONCURRENT``, default 4):
+      concurrent batch work is bounded by an ``asyncio.Semaphore``.
+      Requests beyond the bound receive 429 with ``Retry-After``.
+    - Per-item error isolation: individual item failures are returned as
+      error entries instead of failing the whole batch.
+    - Synchronous sentiment analysis is offloaded to a
+      ``ThreadPoolExecutor`` so the event loop stays responsive for
+      ``/health`` and ``/metrics``.
+    """
     start_time = time.monotonic()
-    try:
-        if not texts:
-            raise HTTPException(status_code=400, detail="Texts list cannot be empty")
 
-        results = sentiment_analyzer.analyze_batch(texts, asset)
-        summary = sentiment_analyzer.get_sentiment_summary(results)
+    # --- 1. Validate batch size ------------------------------------------------
+    if not texts:
+        raise HTTPException(status_code=400, detail="Texts list cannot be empty")
 
+    if len(texts) > MAX_BATCH_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"Batch size {len(texts)} exceeds maximum of {MAX_BATCH_SIZE}. "
+                "Please split your request into smaller batches."
+            ),
+        )
+
+    # --- 2. Acquire concurrency semaphore (backpressure) ----------------------
+    if _batch_semaphore.locked():
+        logger.warning(
+            "Batch concurrency limit reached (%d); rejecting request",
+            MAX_CONCURRENT_BATCHES,
+        )
+        raise HTTPException(
+            status_code=429,
+            detail="Server is at capacity. Please retry after a short delay.",
+            headers={"Retry-After": "5"},
+        )
+
+    async with _batch_semaphore:
+        # --- 3. Run CPU-bound work off the event loop --------------------------
+        loop = asyncio.get_running_loop()
+
+        def _run_batch() -> list:
+            return sentiment_analyzer.analyze_batch(texts, asset)
+
+        try:
+            results = await loop.run_in_executor(_batch_executor, _run_batch)
+        except Exception as e:
+            logger.error("Batch inference failed: %s", e, exc_info=True)
+            raise HTTPException(status_code=500, detail=str(e))
+
+        # --- 4. Per-item error isolation ---------------------------------------
+        item_results: list[Dict[str, Any]] = []
+        for idx, (text, result) in enumerate(zip(texts, results)):
+            try:
+                item_results.append({
+                    "index": idx,
+                    "text": text[:100],
+                    "status": "ok",
+                    **result.to_dict(),
+                })
+            except Exception as item_exc:
+                logger.warning("Item %d failed: %s", idx, item_exc)
+                item_results.append({
+                    "index": idx,
+                    "text": text[:100] if text else "",
+                    "status": "error",
+                    "error": str(item_exc),
+                })
+
+        # --- 5. Build response -------------------------------------------------
         req_id = correlation_id_ctx.get(generate_correlation_id())
         model_version = get_current_version("sentiment") or "1.0.0"
         latency_ms = (time.monotonic() - start_time) * 1000
-        
-        for text, result in zip(texts, results):
-            _log_prediction(
-                request_id=req_id,
-                model_type="sentiment",
-                model_version=model_version,
-                input_text=text,
-                output={
-                    "sentiment": result.compound_score,
-                    "asset_codes": result.asset_codes,
-                    "sentiment_label": result.sentiment_label,
-                },
-                latency_ms=latency_ms / len(texts),  # Average latency per item
-            )
+
+        # Log each successful prediction
+        for item in item_results:
+            if item.get("status") == "ok":
+                _log_prediction(
+                    request_id=req_id,
+                    model_type="sentiment",
+                    model_version=model_version,
+                    input_text=item.get("text", ""),
+                    output={
+                        "sentiment": item.get("compound_score", 0),
+                        "asset_codes": item.get("asset_codes", []),
+                        "sentiment_label": item.get("sentiment_label", "neutral"),
+                    },
+                    latency_ms=latency_ms / len(texts),
+                )
+
+        # Recompute summary from successful items only
+        successful = [r for r in results if r is not None]
+        summary = sentiment_analyzer.get_sentiment_summary(successful) if successful else {}
 
         return {
-            "results": [r.to_dict() for r in results],
+            "results": item_results,
             "summary": summary,
-            "count": len(results),
+            "count": len(item_results),
+            "errors": sum(1 for r in item_results if r.get("status") == "error"),
             "asset_filter": asset,
+            "latency_ms": round(latency_ms, 2),
+            "concurrency_slots_remaining": MAX_CONCURRENT_BATCHES - _batch_semaphore._value,
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 

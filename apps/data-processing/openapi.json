@@ -1616,7 +1616,7 @@
     "/analyze-batch": {
       "post": {
         "summary": "Analyze Batch",
-        "description": "Batch analyze multiple texts with optional asset filter",
+        "description": "Batch analyze multiple texts with optional asset filter.\n\nBackpressure controls:\n- ``MAX_BATCH_SIZE`` (env ``BATCH_MAX_SIZE``, default 200): oversized\n  requests are rejected with 413.\n- ``MAX_CONCURRENT_BATCHES`` (env ``BATCH_MAX_CONCURRENT``, default 4):\n  concurrent batch work is bounded by an ``asyncio.Semaphore``.\n  Requests beyond the bound receive 429 with ``Retry-After``.\n- Per-item error isolation: individual item failures are returned as\n  error entries instead of failing the whole batch.\n- Synchronous sentiment analysis is offloaded to a\n  ``ThreadPoolExecutor`` so the event loop stays responsive for\n  ``/health`` and ``/metrics``.",
         "operationId": "analyze_batch_analyze_batch_post",
         "parameters": [
           {
