@@ -34,7 +34,9 @@ import { signTransaction } from "@stellar/freighter-api";
 import { Address, Contract, TransactionBuilder, nativeToScVal, rpc } from "@stellar/stellar-sdk";
 import { useExplorerUrl } from "@/hooks/useExplorerUrl";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { clientConfig } from '@/lib/config';
+
+const API_BASE = clientConfig.apiUrl;
 
 // Types
 export interface ProjectMilestone {

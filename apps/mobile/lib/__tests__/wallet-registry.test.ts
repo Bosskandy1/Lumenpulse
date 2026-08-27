@@ -1,7 +1,8 @@
 import { createWalletAdapterRegistry } from '../wallet/registry';
 
-export function testProductionRegistryExcludesMockAdapter(): boolean {
-  const adapters = createWalletAdapterRegistry(false);
-
-  return !adapters.some((adapter) => adapter.id === 'mock');
-}
+describe('wallet registry', () => {
+  test('production registry excludes mock adapter', () => {
+    const adapters = createWalletAdapterRegistry(false);
+    expect(adapters.some((adapter) => adapter.id === 'mock')).toBe(false);
+  });
+});

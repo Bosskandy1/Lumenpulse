@@ -1,3 +1,5 @@
+import { clientConfig } from '@/lib/config';
+
 // API service functions for cryptocurrency data
 
 export interface CryptoApiData {
@@ -67,7 +69,7 @@ export interface StellarBalance {
 }
 
 export class StellarApiService {
-  private static readonly BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  private static readonly BASE_URL = clientConfig.apiUrl;
 
   static async getAccountBalances(publicKey: string): Promise<{ balances: StellarBalance[] }> {
     try {
@@ -225,7 +227,7 @@ export interface AllocationAsset {
 
 export class PortfolioApiService {
   private static readonly BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    clientConfig.apiUrl;
 
   /** Read the JWT from the auth-token cookie (same pattern as StellarApiService). */
   private static getAuthHeaders(): Record<string, string> {
@@ -376,7 +378,7 @@ export interface ProjectSummary {
  * API service for interacting with crowdfund project endpoints
  */
 export class ProjectApiService {
-  private static readonly BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  private static readonly BASE_URL = clientConfig.apiUrl;
 
   /**
    * Get all projects

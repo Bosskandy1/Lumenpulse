@@ -3,6 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
+import { config } from '../lib/config';
 
 export interface RetrainResult {
   status: string;
@@ -60,9 +61,12 @@ export class ModelRetrainingService {
   ) {
     this.pythonApiUrl = this.configService.get<string>(
       'PYTHON_API_URL',
-      'http://localhost:8000',
+      config.python.apiUrl || 'http://localhost:8000',
     );
-    this.apiKey = this.configService.get<string>('PYTHON_API_KEY', '');
+    this.apiKey = this.configService.get<string>(
+      'PYTHON_API_KEY',
+      config.python.apiKey || '',
+    );
     this.pollIntervalMs = this.configService.get<number>(
       'PYTHON_JOB_POLL_INTERVAL_MS',
       2_000,
