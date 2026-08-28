@@ -6,6 +6,7 @@ mod storage;
 mod token;
 mod vault_interface;
 
+use cross_contract_view::admin_helpers;
 use errors::VestingError;
 use events::{AdminChangedEvent, UpgradedEvent};
 use reentrancy_guard::{acquire as acquire_reentrancy, release as release_reentrancy};
@@ -15,7 +16,6 @@ use storage::{
 };
 use token::transfer;
 use vault_interface::CrowdfundVaultClient;
-use cross_contract_view::admin_helpers;
 
 #[contract]
 pub struct VestingWalletContract;
@@ -137,11 +137,10 @@ impl VestingWalletContract {
         milestone_requirement: MilestoneRequirement,
     ) -> Result<(), VestingError> {
         // Check if contract is initialized and verify admin using cross-contract view helper
-        admin_helpers::require_admin(&env, &admin, &DataKey::Admin)
-            .map_err(|e| match e {
-                cross_contract_view::ViewError::NotInitialized => VestingError::NotInitialized,
-                _ => VestingError::Unauthorized,
-            })?;
+        admin_helpers::require_admin(&env, &admin, &DataKey::Admin).map_err(|e| match e {
+            cross_contract_view::ViewError::NotInitialized => VestingError::NotInitialized,
+            _ => VestingError::Unauthorized,
+        })?;
         env.storage()
             .instance()
             .extend_ttl(LEDGER_THRESHOLD, LEDGER_BUMP);

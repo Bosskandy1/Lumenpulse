@@ -28,17 +28,18 @@ pub fn require_admin<K: IntoVal<Env, Val>>(
         .instance()
         .get(admin_key)
         .ok_or(ViewError::NotInitialized)?;
-    
+
     if caller != &admin {
         return Err(ViewError::Unauthorized);
     }
-    
+
     caller.require_auth();
-    
-    env.storage()
-        .instance()
-        .extend_ttl(super::safe_view::DEFAULT_LEDGER_THRESHOLD, super::safe_view::DEFAULT_LEDGER_BUMP);
-    
+
+    env.storage().instance().extend_ttl(
+        super::safe_view::DEFAULT_LEDGER_THRESHOLD,
+        super::safe_view::DEFAULT_LEDGER_BUMP,
+    );
+
     Ok(())
 }
 
@@ -52,20 +53,18 @@ pub fn require_admin<K: IntoVal<Env, Val>>(
 /// # Returns
 ///
 /// The admin address, or `ViewError::NotInitialized` if not set.
-pub fn get_admin<K: IntoVal<Env, Val>>(
-    env: &Env,
-    admin_key: &K,
-) -> Result<Address, ViewError> {
+pub fn get_admin<K: IntoVal<Env, Val>>(env: &Env, admin_key: &K) -> Result<Address, ViewError> {
     let admin: Address = env
         .storage()
         .instance()
         .get(admin_key)
         .ok_or(ViewError::NotInitialized)?;
-    
-    env.storage()
-        .instance()
-        .extend_ttl(super::safe_view::DEFAULT_LEDGER_THRESHOLD, super::safe_view::DEFAULT_LEDGER_BUMP);
-    
+
+    env.storage().instance().extend_ttl(
+        super::safe_view::DEFAULT_LEDGER_THRESHOLD,
+        super::safe_view::DEFAULT_LEDGER_BUMP,
+    );
+
     Ok(admin)
 }
 
@@ -79,10 +78,7 @@ pub fn get_admin<K: IntoVal<Env, Val>>(
 /// # Returns
 ///
 /// `true` if initialized, `false` otherwise.
-pub fn is_initialized<K: IntoVal<Env, Val>>(
-    env: &Env,
-    admin_key: &K,
-) -> bool {
+pub fn is_initialized<K: IntoVal<Env, Val>>(env: &Env, admin_key: &K) -> bool {
     env.storage().instance().has(admin_key)
 }
 
@@ -112,9 +108,11 @@ mod tests {
         env.mock_all_auths();
         let admin = Address::generate(&env);
         let contract_id = env.register(TestContract, ());
-        
+
         env.as_contract(&contract_id, || {
-            env.storage().instance().set(&DataKey::Admin, &admin.clone());
+            env.storage()
+                .instance()
+                .set(&DataKey::Admin, &admin.clone());
             let result = require_admin(&env, &admin, &DataKey::Admin);
             assert!(result.is_ok());
         });
@@ -127,7 +125,7 @@ mod tests {
         let admin = Address::generate(&env);
         let attacker = Address::generate(&env);
         let contract_id = env.register(TestContract, ());
-        
+
         env.as_contract(&contract_id, || {
             env.storage().instance().set(&DataKey::Admin, &admin);
             let result = require_admin(&env, &attacker, &DataKey::Admin);
@@ -141,7 +139,7 @@ mod tests {
         env.mock_all_auths();
         let caller = Address::generate(&env);
         let contract_id = env.register(TestContract, ());
-        
+
         env.as_contract(&contract_id, || {
             let result = require_admin(&env, &caller, &DataKey::Admin);
             assert_eq!(result, Err(ViewError::NotInitialized));
@@ -153,9 +151,11 @@ mod tests {
         let env = Env::default();
         let admin = Address::generate(&env);
         let contract_id = env.register(TestContract, ());
-        
+
         env.as_contract(&contract_id, || {
-            env.storage().instance().set(&DataKey::Admin, &admin.clone());
+            env.storage()
+                .instance()
+                .set(&DataKey::Admin, &admin.clone());
             let result = get_admin(&env, &DataKey::Admin);
             assert_eq!(result, Ok(admin));
         });
@@ -166,7 +166,7 @@ mod tests {
         let env = Env::default();
         let admin = Address::generate(&env);
         let contract_id = env.register(TestContract, ());
-        
+
         env.as_contract(&contract_id, || {
             assert!(!is_initialized(&env, &DataKey::Admin));
             env.storage().instance().set(&DataKey::Admin, &admin);

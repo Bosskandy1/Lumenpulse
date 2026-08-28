@@ -78,17 +78,14 @@ where
     K: IntoVal<Env, Val>,
     T: TryFromVal<Env, Val> + Clone,
 {
-    env.storage()
-        .instance()
-        .get(key)
-        .unwrap_or_else(|| {
-            if env.storage().instance().has(key) {
-                env.storage()
-                    .instance()
-                    .extend_ttl(DEFAULT_LEDGER_THRESHOLD, DEFAULT_LEDGER_BUMP);
-            }
-            default
-        })
+    env.storage().instance().get(key).unwrap_or_else(|| {
+        if env.storage().instance().has(key) {
+            env.storage()
+                .instance()
+                .extend_ttl(DEFAULT_LEDGER_THRESHOLD, DEFAULT_LEDGER_BUMP);
+        }
+        default
+    })
 }
 
 /// Read state from persistent storage with proper error handling.
@@ -115,9 +112,11 @@ where
         .get(key)
         .ok_or(ViewError::NotFound)
         .map(|v: T| {
-            env.storage()
-                .persistent()
-                .extend_ttl(key, DEFAULT_LEDGER_THRESHOLD, DEFAULT_LEDGER_BUMP);
+            env.storage().persistent().extend_ttl(
+                key,
+                DEFAULT_LEDGER_THRESHOLD,
+                DEFAULT_LEDGER_BUMP,
+            );
             v
         })
 }
@@ -140,7 +139,11 @@ where
     K: IntoVal<Env, Val>,
     T: TryFromVal<Env, Val> + Clone,
 {
-    let value = env.storage().persistent().get(key).unwrap_or(default.clone());
+    let value = env
+        .storage()
+        .persistent()
+        .get(key)
+        .unwrap_or(default.clone());
     if env.storage().persistent().has(key) {
         env.storage()
             .persistent()
@@ -209,7 +212,9 @@ mod tests {
     #[contractimpl]
     impl TestContract {
         pub fn setup(env: Env) {
-            env.storage().instance().set(&DataKey::Admin, &Address::generate(&env));
+            env.storage()
+                .instance()
+                .set(&DataKey::Admin, &Address::generate(&env));
             env.storage().instance().set(&DataKey::Value, &42i128);
         }
     }

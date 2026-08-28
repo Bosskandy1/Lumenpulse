@@ -56,7 +56,7 @@ pub struct TokenInfo {
 /// Token metadata, or `ViewError::TokenError` if the call fails.
 pub fn token_info(env: &Env, token: &Address) -> Result<TokenInfo, ViewError> {
     let client = soroban_sdk::token::Client::new(env, token);
-    
+
     Ok(TokenInfo {
         decimals: client.decimals(),
         name: client.name(),

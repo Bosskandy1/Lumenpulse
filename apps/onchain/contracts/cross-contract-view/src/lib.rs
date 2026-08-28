@@ -13,12 +13,12 @@
 
 #![no_std]
 
+pub mod admin_helpers;
 mod errors;
 pub mod safe_view;
 pub mod token_helpers;
-pub mod admin_helpers;
 
+pub use admin_helpers::{get_admin, require_admin};
 pub use errors::ViewError;
-pub use safe_view::{read_state, has_state, read_state_with_default};
-pub use token_helpers::{balance, allowance, token_info};
-pub use admin_helpers::{require_admin, get_admin};
+pub use safe_view::{has_state, read_state, read_state_with_default};
+pub use token_helpers::{allowance, balance, token_info};

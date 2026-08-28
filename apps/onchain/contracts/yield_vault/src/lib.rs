@@ -4,8 +4,8 @@ mod errors;
 mod events;
 mod storage;
 
+use cross_contract_view::token_helpers;
 use errors::YieldVaultError;
-use reentrancy_guard::{acquire as acquire_reentrancy, release as release_reentrancy};
 use soroban_sdk::token::TokenClient;
 use soroban_sdk::{contract, contractclient, contractimpl, Address, BytesN, Env, Symbol};
 use storage::{DataKey, YieldProvider};
