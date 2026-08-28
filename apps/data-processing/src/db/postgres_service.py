@@ -34,6 +34,7 @@ from .models import (
     EntityLinkingReview,
     DailyOnchainKPISnapshot,
     PredictionLog,
+    SentimentLabel,
 )
 from .cohort_models import (
     GrantRound,
@@ -2765,6 +2766,75 @@ class PostgresService:
         except SQLAlchemyError as e:
             logger.error(f"Failed to retrieve reviewed outcomes: {e}")
             return []
+
+    # Human-labelled sentiment examples (#1241)
+
+    @staticmethod
+    def _sentiment_label_dict(row: SentimentLabel) -> Dict[str, Any]:
+        return {
+            "id": row.id,
+            "text": row.text,
+            "label": row.label,
+            "labeller": row.labeller,
+            "timestamp": row.labelled_at.isoformat(),
+            "labelled_at": row.labelled_at.isoformat(),
+            "is_held_out": row.is_held_out,
+        }
+
+    def save_sentiment_label(
+        self,
+        text: str,
+        label: str,
+        labeller: str,
+        labelled_at: Optional[datetime] = None,
+        is_held_out: bool = False,
+    ) -> Optional[SentimentLabel]:
+        """Persist a labelled example; repeated text updates its ground truth."""
+        if not text or not text.strip() or label not in {"positive", "negative", "neutral"}:
+            raise ValueError("text is required and label must be positive, negative, or neutral")
+        if not labeller or not labeller.strip():
+            raise ValueError("labeller is required")
+        try:
+            with self.get_session() as session:
+                row = session.execute(
+                    select(SentimentLabel).where(SentimentLabel.text == text)
+                ).scalar_one_or_none()
+                values = {
+                    "label": label,
+                    "labeller": labeller.strip(),
+                    "labelled_at": labelled_at or datetime.utcnow(),
+                    "is_held_out": is_held_out,
+                }
+                if row is None:
+                    row = SentimentLabel(text=text.strip(), **values)
+                    session.add(row)
+                else:
+                    for key, value in values.items():
+                        setattr(row, key, value)
+                session.flush()
+                session.refresh(row)
+                return row
+        except SQLAlchemyError as exc:
+            logger.error("Failed to save sentiment label: %s", exc)
+            return None
+
+    def get_sentiment_labels(
+        self, held_out: Optional[bool] = None, limit: int = 1000
+    ) -> List[SentimentLabel]:
+        try:
+            with self.get_session() as session:
+                query = select(SentimentLabel).order_by(SentimentLabel.id.asc()).limit(limit)
+                if held_out is not None:
+                    query = query.where(SentimentLabel.is_held_out == held_out)
+                return session.execute(query).scalars().all()
+        except SQLAlchemyError as exc:
+            logger.error("Failed to retrieve sentiment labels: %s", exc)
+            return []
+
+    def get_sentiment_label_dicts(
+        self, held_out: Optional[bool] = None, limit: int = 1000
+    ) -> List[Dict[str, Any]]:
+        return [self._sentiment_label_dict(row) for row in self.get_sentiment_labels(held_out, limit)]
 
     # Daily On-Chain KPI Snapshot Methods (#877)
 
