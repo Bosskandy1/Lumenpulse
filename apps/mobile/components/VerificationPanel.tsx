@@ -130,6 +130,9 @@ export default function VerificationPanel({ projectId, voterPublicKey }: Props) 
       {canVote && (
         <View style={styles.voteButtons}>
           <TouchableOpacity
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Verify project"
             style={[styles.voteBtn, { backgroundColor: '#10b981' + '22', borderColor: '#10b981' }]}
             onPress={() => void vote(true)}
             disabled={isVoting}
@@ -145,6 +148,9 @@ export default function VerificationPanel({ projectId, voterPublicKey }: Props) 
             )}
           </TouchableOpacity>
           <TouchableOpacity
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Reject project"
             style={[styles.voteBtn, { backgroundColor: '#ef4444' + '22', borderColor: '#ef4444' }]}
             onPress={() => void vote(false)}
             disabled={isVoting}

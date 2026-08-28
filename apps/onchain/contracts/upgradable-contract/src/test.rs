@@ -584,3 +584,45 @@ fn test_old_admin_cannot_execute_after_rotation() {
         Err(Ok(ContractError::Unauthorized))
     );
 }
+
+#[test]
+fn test_two_step_admin_rotation_flow() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+    let attacker = Address::generate(&env);
+    let (_, client) = setup(&env);
+    client.init(&admin);
+
+    // Unauthorized proposer fails
+    assert_eq!(
+        client.try_propose_admin_rotation(&attacker, &new_admin),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    // Propose
+    client.propose_admin_rotation(&admin, &new_admin);
+
+    // Accept
+    client.accept_admin_rotation(&new_admin);
+    assert_eq!(client.get_admin(), new_admin);
+}
+
+#[test]
+fn test_admin_rotation_cancel() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+    let (_, client) = setup(&env);
+    client.init(&admin);
+
+    client.propose_admin_rotation(&admin, &new_admin);
+    client.cancel_admin_rotation(&admin);
+
+    assert_eq!(
+        client.try_accept_admin_rotation(&new_admin),
+        Err(Ok(ContractError::OperationNotFound))
+    );
+}

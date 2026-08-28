@@ -18,6 +18,7 @@ use storage::{
 #[contracttype]
 pub enum DataKey {
     Admin,
+    ProposedAdmin,
     Counter,
     NextOperationId,
     QueuedOperation(u32),
@@ -246,6 +247,49 @@ impl UpgradableContract {
 
     pub fn get_count(env: Env) -> u32 {
         env.storage().instance().get(&DataKey::Counter).unwrap_or(0)
+    }
+
+    pub fn propose_admin_rotation(
+        env: Env,
+        proposer: Address,
+        new_admin: Address,
+    ) -> Result<(), ContractError> {
+        Self::require_admin(&env, &proposer)?;
+        env.storage()
+            .instance()
+            .set(&DataKey::ProposedAdmin, &new_admin);
+        Ok(())
+    }
+
+    pub fn accept_admin_rotation(env: Env, new_admin: Address) -> Result<(), ContractError> {
+        let proposed: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::ProposedAdmin)
+            .ok_or(ContractError::OperationNotFound)?;
+        if new_admin != proposed {
+            return Err(ContractError::Unauthorized);
+        }
+        new_admin.require_auth();
+        let old_admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(ContractError::NotInitialized)?;
+        env.storage().instance().set(&DataKey::Admin, &new_admin);
+        env.storage().instance().remove(&DataKey::ProposedAdmin);
+        AdminChangedEvent {
+            old_admin,
+            new_admin,
+        }
+        .publish(&env);
+        Ok(())
+    }
+
+    pub fn cancel_admin_rotation(env: Env, canceller: Address) -> Result<(), ContractError> {
+        Self::require_admin(&env, &canceller)?;
+        env.storage().instance().remove(&DataKey::ProposedAdmin);
+        Ok(())
     }
 
     pub fn version() -> u32 {

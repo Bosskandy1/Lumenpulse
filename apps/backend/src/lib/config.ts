@@ -29,7 +29,6 @@ import { z } from 'zod';
  * - CACHE_TTL_MS
  * - COINDESK_API_KEY
  * - PYTHON_API_URL
- * - PYTHON_SERVICE_URL
  * - PYTHON_API_KEY
  * - DOMAIN
  * - JWT_EXPIRES_IN
@@ -460,8 +459,7 @@ const envSchema = z
     STELLAR_CONTRACT_TREASURY: z.string().trim().optional(),
     STELLAR_CONTRACT_VESTING_WALLET: z.string().trim().optional(),
 
-    PYTHON_API_URL: z.string().trim().default('http://localhost:8000'),
-    PYTHON_SERVICE_URL: z.string().trim().optional(),
+    PYTHON_API_URL: z.string().trim().optional(),
     PYTHON_API_KEY: z.string().trim().optional(),
 
     COINDESK_API_KEY: z.string().trim().optional(),
@@ -555,6 +553,12 @@ const envSchema = z
       .min(1)
       .default(30_000),
     IDEMPOTENCY_CLEANUP_CRON: z.string().trim().default('0 3 * * *'),
+
+    SHUTDOWN_GRACE_PERIOD_MS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(15_000),
   })
   .superRefine((values, context) => {
     if (values.NODE_ENV === 'production' && !values.CORS_ORIGIN) {
@@ -563,6 +567,18 @@ const envSchema = z
         message:
           'CORS_ORIGIN must be set in production. Restrict CORS to your frontend URL(s).',
         path: ['CORS_ORIGIN'],
+      });
+    }
+
+    if (
+      values.NODE_ENV !== 'development' &&
+      values.NODE_ENV !== 'test' &&
+      !values.PYTHON_API_URL
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'PYTHON_API_URL must be set in non-development environments.',
+        path: ['PYTHON_API_URL'],
       });
     }
   });
@@ -592,6 +608,9 @@ if (!parseResult.success) {
 }
 
 const parsedEnv = parseResult.data;
+const pythonApiUrl = parsedEnv.PYTHON_API_URL || 'http://localhost:8000';
+process.env.PYTHON_API_URL = pythonApiUrl;
+
 const rateLimitDefaults =
   RATE_LIMIT_DEFAULTS[getRateLimitEnvironment(parsedEnv.NODE_ENV)];
 
@@ -920,11 +939,7 @@ const optionalSummary = [
     'STELLAR_CONTRACT_VESTING_WALLET',
     parsedEnv.STELLAR_CONTRACT_VESTING_WALLET ?? '(not set)',
   ],
-  ['PYTHON_API_URL', parsedEnv.PYTHON_API_URL],
-  [
-    'PYTHON_SERVICE_URL',
-    parsedEnv.PYTHON_SERVICE_URL ?? '(defaults to PYTHON_API_URL)',
-  ],
+  ['PYTHON_API_URL', pythonApiUrl],
   ['PYTHON_API_KEY', parsedEnv.PYTHON_API_KEY ? '[REDACTED]' : '(not set)'],
   ['COINDESK_API_KEY', parsedEnv.COINDESK_API_KEY ? '[REDACTED]' : '(not set)'],
   ['JWT_EXPIRES_IN', parsedEnv.JWT_EXPIRES_IN],
@@ -1078,6 +1093,7 @@ export const config = Object.freeze({
       ? resolvedCorsOrigin[0]
       : resolvedCorsOrigin,
   ),
+  shutdownGracePeriodMs: parsedEnv.SHUTDOWN_GRACE_PERIOD_MS,
   database: Object.freeze({
     host: parsedEnv.DB_HOST,
     port: parsedEnv.DB_PORT,
@@ -1119,8 +1135,7 @@ export const config = Object.freeze({
     domain: parsedEnv.DOMAIN,
   }),
   python: Object.freeze({
-    apiUrl: parsedEnv.PYTHON_API_URL,
-    serviceUrl: parsedEnv.PYTHON_SERVICE_URL || parsedEnv.PYTHON_API_URL,
+    apiUrl: pythonApiUrl,
     apiKey: parsedEnv.PYTHON_API_KEY,
   }),
   apiKeys: Object.freeze({

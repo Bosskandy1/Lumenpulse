@@ -320,6 +320,14 @@ export const storage = {
     await this.clearAuthState();
   },
 
+  async rotateStorageKey() {
+    await this.clearAuthState();
+  },
+
+  async invalidateOnSessionEnd() {
+    await this.clearAuthState();
+  },
+
   /**
    * Persists the in-progress contribution draft so an interrupted
    * contribution can be resumed after the app restarts. Only one draft is
