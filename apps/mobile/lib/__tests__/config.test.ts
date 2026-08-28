@@ -22,7 +22,7 @@ describe('config', () => {
 
   describe('validateEnvironmentConfig', () => {
     // Save original __DEV__ value
-    const originalDev = global.__DEV__;
+    const originalDev = (global as any).__DEV__;
 
     afterEach(() => {
       // Restore original __DEV__ value

@@ -5,6 +5,9 @@ declare global {
       __DEV__: boolean;
     }
   }
+  interface globalThis {
+    __DEV__: boolean;
+  }
 }
 
 export {};
