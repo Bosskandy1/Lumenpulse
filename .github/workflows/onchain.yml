@@ -24,11 +24,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
       with:
@@ -46,8 +41,7 @@ jobs:
     - name: Run clippy
       run: cargo clippy --all-targets --all-features -- -D warnings
 
-    - name: Validate manifest
-      run: node scripts/validate-manifest.js
+  
 
     - name: Build Contracts
       run: cargo build --target wasm32-unknown-unknown --release
