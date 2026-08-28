@@ -14,4 +14,10 @@ Notes
 - Implementation already enforces threshold checks, duplicate-approval rejection, action-type matching, and executor authorization.
 - Tests include happy path and insufficient quorum scenarios for both contracts.
 
+Status
+- Implemented on testnet and covered by unit tests in `apps/onchain/contracts/treasury` and `apps/onchain/contracts/contributor_registry`.
+
+Verification
+- Unit tests exercising propose → sign → execute, duplicate-sign rejection, unauthorized executor rejection, expiry, and insufficient-quorum scenarios are present in the contracts' test suites.
+
 If you want, I can open a PR or run the onchain contract test suite locally to verify further.
