@@ -9,6 +9,7 @@ mod treasury_interface;
 mod yield_provider;
 
 use errors::CrowdfundError;
+use idempotency_guard::claim_request as idempotency_claim;
 use math::{sqrt_scaled, unscale};
 use notification_interface::{Notification, NotificationReceiverClient};
 use reentrancy_guard::{acquire as acquire_reentrancy, release as release_reentrancy};
@@ -670,17 +671,36 @@ impl CrowdfundVaultContract {
         })
     }
 
-    /// Deposit funds into a project
+    /// Deposit funds into a project.
+    ///
+    /// `request_id` is a caller-supplied 32-byte nonce that uniquely identifies
+    /// this deposit attempt.  The idempotency-guard stores a receipt for the
+    /// nonce so that a second submission with the *same* `request_id` is
+    /// rejected with `AlreadyExecuted` — protecting against double-spend from
+    /// network retries or frontend bugs.
+    ///
+    /// Callers MUST generate a fresh nonce per deposit (e.g. random bytes or a
+    /// deterministic hash of `(user, project_id, amount, timestamp)`).  Reusing
+    /// a nonce within the ~14-day TTL window will cause a rejection.
+    ///
+    /// # Storage cost
+    /// One persistent 32-byte key is written per unique `request_id`.
+    /// The key expires after ~14 days (241 920 ledgers at 5 s/ledger).
     pub fn deposit(
         env: Env,
         user: Address,
         project_id: u64,
         amount: i128,
+        request_id: BytesN<32>,
     ) -> Result<(), CrowdfundError> {
         Self::with_reentrancy_guard(&env, || {
             Self::require_current_storage_version(&env)?;
 
             user.require_auth();
+
+            // ── Idempotency check (must come before any state mutation) ──────
+            // Reject duplicate submissions that carry an already-seen request_id.
+            idempotency_claim(&env, &request_id).map_err(|_| CrowdfundError::AlreadyExecuted)?;
 
             let is_paused: bool = env
                 .storage()

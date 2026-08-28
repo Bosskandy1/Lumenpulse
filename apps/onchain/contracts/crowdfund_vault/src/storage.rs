@@ -41,6 +41,13 @@ pub enum DataKey {
     RefundReceipt(u64, u64),     // (project_id, receipt_id) -> RefundReceipt
     RefundReceiptCount(u64),     // project_id -> u64
     RefundClaimed(u64, Address), // (project_id, contributor) -> bool
+    // ── Idempotency guard (issue #1224) ──────────────────────────────────────
+    /// Idempotency receipt for a deposit operation.
+    /// Key: (project_id, contributor_address)
+    /// Value: true (present means the deposit was already executed)
+    /// Storage tier: Persistent — survives across ledgers for the TTL window
+    /// defined in the idempotency-guard crate (~14 days).
+    DepositIdempotencyKey(u64, Address), // (project_id, depositor) -> BytesN<32>
     // ── Emergency migration (issue #1047) ─────────────────────────────────────
     EmergencyMigrationPlan(u64), // project_id -> EmergencyMigrationPlan
 }
