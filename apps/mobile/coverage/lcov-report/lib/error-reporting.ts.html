@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for lib/transaction.ts</title>
+    <title>Code coverage report for lib/error-reporting.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">lib</a> transaction.ts</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">lib</a> error-reporting.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/22</span>
+                <span class='fraction'>0/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/18</span>
+                <span class='fraction'>0/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>0/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/18</span>
+                <span class='fraction'>0/11</span>
             </div>
         
             
@@ -94,24 +94,7 @@
 <a name='L29'></a><a href='#L29'>29</a>
 <a name='L30'></a><a href='#L30'>30</a>
 <a name='L31'></a><a href='#L31'>31</a>
-<a name='L32'></a><a href='#L32'>32</a>
-<a name='L33'></a><a href='#L33'>33</a>
-<a name='L34'></a><a href='#L34'>34</a>
-<a name='L35'></a><a href='#L35'>35</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L32'></a><a href='#L32'>32</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -120,51 +103,59 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { apiClient } from './api-client';</span>
-import { TransactionHistoryResponse } from '../lib/types/transaction';
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { fallbackReleaseMetadata } from "./release-metadata";</span>
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >transactionApi = {</span>
-  getHistory: <span class="fstat-no" title="function not covered" >async </span>(limit?: number, cursor?: string): Promise&lt;TransactionHistoryResponse&gt; =&gt; {
-    const params = <span class="cstat-no" title="statement not covered" >new URLSearchParams();</span>
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (limit) <span class="cstat-no" title="statement not covered" >params.append('limit', limit.toString());</span></span>
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (cursor) <span class="cstat-no" title="statement not covered" >params.append('cursor', cursor);</span></span>
+export interface ErrorReportOptions {
+  optOut?: boolean;
+  environment?: string;
+}
 &nbsp;
-    const url = <span class="cstat-no" title="statement not covered" >`/transactions/history${params.toString() ? `?${params.toString()}` : ''}`;</span>
-    const response = <span class="cstat-no" title="statement not covered" >await apiClient.get&lt;TransactionHistoryResponse&gt;(url);</span>
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (response.success &amp;&amp; response.data) {</span>
-<span class="cstat-no" title="statement not covered" >      return response.data;</span>
+class ErrorReporter {
+  private isEnabled = <span class="cstat-no" title="statement not covered" >true;</span>
+&nbsp;
+<span class="fstat-no" title="function not covered" >  init(</span>options?: ErrorReportOptions) {
+<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (options?.optOut || process.env.NODE_ENV === "development") {</span>
+<span class="cstat-no" title="statement not covered" >      this.isEnabled = false;</span>
     }
-<span class="cstat-no" title="statement not covered" >    throw new Error(response.error?.message || 'Failed to fetch transaction history');</span>
-  },
+  }
 &nbsp;
-  getForAccount: <span class="fstat-no" title="function not covered" >async </span>(
-    publicKey: string,
-    limit?: number,
-    cursor?: string,
-  ): Promise&lt;TransactionHistoryResponse&gt; =&gt; {
-    const params = <span class="cstat-no" title="statement not covered" >new URLSearchParams();</span>
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (limit) <span class="cstat-no" title="statement not covered" >params.append('limit', limit.toString());</span></span>
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (cursor) <span class="cstat-no" title="statement not covered" >params.append('cursor', cursor);</span></span>
+<span class="fstat-no" title="function not covered" >  captureError(</span>error: Error, extra?: Record&lt;string, unknown&gt;) {
+<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!this.isEnabled) <span class="cstat-no" title="statement not covered" >return;</span></span>
+    const sanitized = <span class="cstat-no" title="statement not covered" >this.scrubPayload({ error: error.message, stack: error.stack, extra });</span>
+<span class="cstat-no" title="statement not covered" >    console.error(`[ErrorReporting:${fallbackReleaseMetadata.releases[0]?.version}]`, sanitized);</span>
+  }
 &nbsp;
-    const url = <span class="cstat-no" title="statement not covered" >`/transactions/account/${publicKey}${params.toString() ? `?${params.toString()}` : ''}`;</span>
-    const response = <span class="cstat-no" title="statement not covered" >await apiClient.get&lt;TransactionHistoryResponse&gt;(url);</span>
-<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (response.success &amp;&amp; response.data) {</span>
-<span class="cstat-no" title="statement not covered" >      return response.data;</span>
-    }
-<span class="cstat-no" title="statement not covered" >    throw new Error(response.error?.message || 'Failed to fetch account transactions');</span>
-  },
-};
+  private <span class="fstat-no" title="function not covered" >scrubPayload(</span>data: Record&lt;string, unknown&gt;): Record&lt;string, unknown&gt; {
+    const raw = <span class="cstat-no" title="statement not covered" >JSON.stringify(data);</span>
+    const scrubbed = <span class="cstat-no" title="statement not covered" >raw.replace(/G[A-Z2-7]{55}/g, "[REDACTED_ADDRESS]");</span>
+<span class="cstat-no" title="statement not covered" >    return JSON.parse(scrubbed);</span>
+  }
+}
+&nbsp;
+export const <span class="cstat-no" title="statement not covered" >errorReporter = new ErrorReporter();</span>
+&nbsp;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->

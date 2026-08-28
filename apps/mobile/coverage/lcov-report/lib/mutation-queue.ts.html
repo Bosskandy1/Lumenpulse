@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for lib/saved-news.ts</title>
+    <title>Code coverage report for lib/mutation-queue.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">lib</a> saved-news.ts</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">lib</a> mutation-queue.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/27</span>
+                <span class='fraction'>0/18</span>
             </div>
         
             
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/7</span>
+                <span class='fraction'>0/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/24</span>
+                <span class='fraction'>0/17</span>
             </div>
         
             
@@ -107,41 +107,19 @@
 <a name='L42'></a><a href='#L42'>42</a>
 <a name='L43'></a><a href='#L43'>43</a>
 <a name='L44'></a><a href='#L44'>44</a>
-<a name='L45'></a><a href='#L45'>45</a>
-<a name='L46'></a><a href='#L46'>46</a>
-<a name='L47'></a><a href='#L47'>47</a>
-<a name='L48'></a><a href='#L48'>48</a>
-<a name='L49'></a><a href='#L49'>49</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L45'></a><a href='#L45'>45</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -153,58 +131,68 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import AsyncStorage from '@react-native-async-storage/async-storage';</span>
-import { Article } from './types/news';
 &nbsp;
-const SAVED_ARTICLES_KEY = <span class="cstat-no" title="statement not covered" >'saved_articles';</span>
+export interface PendingMutation {
+  id: string;
+  type: string;
+  payload: Record&lt;string, unknown&gt;;
+  createdAt: string;
+}
 &nbsp;
-export const <span class="cstat-no" title="statement not covered" >savedNewsService = {</span>
-<span class="fstat-no" title="function not covered" >  async </span>getSavedArticles(): Promise&lt;Article[]&gt; {
+const MUTATION_QUEUE_KEY = <span class="cstat-no" title="statement not covered" >'pending_mutation_queue';</span>
+&nbsp;
+export const <span class="cstat-no" title="statement not covered" >mutationQueue = {</span>
+<span class="fstat-no" title="function not covered" >  async </span>getQueue(): Promise&lt;PendingMutation[]&gt; {
 <span class="cstat-no" title="statement not covered" >    try {</span>
-      const saved = <span class="cstat-no" title="statement not covered" >await AsyncStorage.getItem(SAVED_ARTICLES_KEY);</span>
-<span class="cstat-no" title="statement not covered" >      return saved ? JSON.parse(saved) : [];</span>
-    } catch (error) {
-<span class="cstat-no" title="statement not covered" >      console.error('Error getting saved articles:', error);</span>
+      const raw = <span class="cstat-no" title="statement not covered" >await AsyncStorage.getItem(MUTATION_QUEUE_KEY);</span>
+<span class="cstat-no" title="statement not covered" >      return raw ? JSON.parse(raw) : [];</span>
+    } catch {
 <span class="cstat-no" title="statement not covered" >      return [];</span>
     }
   },
 &nbsp;
-<span class="fstat-no" title="function not covered" >  async </span>saveArticle(article: Article): Promise&lt;void&gt; {
-<span class="cstat-no" title="statement not covered" >    try {</span>
-      const saved = <span class="cstat-no" title="statement not covered" >await this.getSavedArticles();</span>
-      const exists = <span class="cstat-no" title="statement not covered" >saved.find(<span class="fstat-no" title="function not covered" >(a</span>) =&gt; <span class="cstat-no" title="statement not covered" >a.id === article.id)</span>;</span>
-<span class="cstat-no" title="statement not covered" >      <span class="missing-if-branch" title="if path not taken" >I</span>if (!exists) {</span>
-        const updated = <span class="cstat-no" title="statement not covered" >[article, ...saved];</span>
-<span class="cstat-no" title="statement not covered" >        await AsyncStorage.setItem(SAVED_ARTICLES_KEY, JSON.stringify(updated));</span>
-      }
-    } catch (error) {
-<span class="cstat-no" title="statement not covered" >      console.error('Error saving article:', error);</span>
-    }
+<span class="fstat-no" title="function not covered" >  async </span>enqueue(mutation: Omit&lt;PendingMutation, 'id' | 'createdAt'&gt;): Promise&lt;void&gt; {
+    const queue = <span class="cstat-no" title="statement not covered" >await this.getQueue();</span>
+    const item: PendingMutation = <span class="cstat-no" title="statement not covered" >{</span>
+      ...mutation,
+      id: Math.random().toString(36).substring(2, 9),
+      createdAt: new Date().toISOString(),
+    };
+<span class="cstat-no" title="statement not covered" >    queue.push(item);</span>
+<span class="cstat-no" title="statement not covered" >    await AsyncStorage.setItem(MUTATION_QUEUE_KEY, JSON.stringify(queue));</span>
   },
 &nbsp;
-<span class="fstat-no" title="function not covered" >  async </span>unsaveArticle(articleId: string): Promise&lt;void&gt; {
-<span class="cstat-no" title="statement not covered" >    try {</span>
-      const saved = <span class="cstat-no" title="statement not covered" >await this.getSavedArticles();</span>
-      const updated = <span class="cstat-no" title="statement not covered" >saved.filter(<span class="fstat-no" title="function not covered" >(a</span>) =&gt; <span class="cstat-no" title="statement not covered" >a.id !== articleId)</span>;</span>
-<span class="cstat-no" title="statement not covered" >      await AsyncStorage.setItem(SAVED_ARTICLES_KEY, JSON.stringify(updated));</span>
-    } catch (error) {
-<span class="cstat-no" title="statement not covered" >      console.error('Error unsaving article:', error);</span>
-    }
+<span class="fstat-no" title="function not covered" >  async </span>dequeue(): Promise&lt;PendingMutation | null&gt; {
+    const queue = <span class="cstat-no" title="statement not covered" >await this.getQueue();</span>
+<span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (queue.length === 0) <span class="cstat-no" title="statement not covered" >return null;</span></span>
+    const [head, ...rest] = <span class="cstat-no" title="statement not covered" >queue;</span>
+<span class="cstat-no" title="statement not covered" >    await AsyncStorage.setItem(MUTATION_QUEUE_KEY, JSON.stringify(rest));</span>
+<span class="cstat-no" title="statement not covered" >    return head;</span>
   },
 &nbsp;
-<span class="fstat-no" title="function not covered" >  async </span>isArticleSaved(articleId: string): Promise&lt;boolean&gt; {
-<span class="cstat-no" title="statement not covered" >    try {</span>
-      const saved = <span class="cstat-no" title="statement not covered" >await this.getSavedArticles();</span>
-<span class="cstat-no" title="statement not covered" >      return saved.some(<span class="fstat-no" title="function not covered" >(a</span>) =&gt; <span class="cstat-no" title="statement not covered" >a.id === articleId)</span>;</span>
-    } catch {
-<span class="cstat-no" title="statement not covered" >      return false;</span>
-    }
+<span class="fstat-no" title="function not covered" >  async </span>clear(): Promise&lt;void&gt; {
+<span class="cstat-no" title="statement not covered" >    await AsyncStorage.removeItem(MUTATION_QUEUE_KEY);</span>
   },
 };
 &nbsp;</pre></td></tr></table></pre>
