@@ -73,8 +73,8 @@ mod tests {
     fn test_balance_returns_zero_for_nonexistent_token() {
         let env = Env::default();
         env.mock_all_auths();
-        let token = Address::generate(&env);
-        let user = Address::generate(&env);
+        let _token = Address::generate(&env);
+        let _user = Address::generate(&env);
         // Balance reads to non-existent tokens will trap in Soroban,
         // so this test verifies the function signature compiles correctly.
     }

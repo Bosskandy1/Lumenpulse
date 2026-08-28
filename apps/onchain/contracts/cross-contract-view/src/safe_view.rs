@@ -37,11 +37,10 @@ where
         .instance()
         .get(key)
         .ok_or(ViewError::NotFound)
-        .map(|v: T| {
+        .inspect(|_v: &T| {
             env.storage()
                 .instance()
                 .extend_ttl(DEFAULT_LEDGER_THRESHOLD, DEFAULT_LEDGER_BUMP);
-            v
         })
 }
 
@@ -111,13 +110,12 @@ where
         .persistent()
         .get(key)
         .ok_or(ViewError::NotFound)
-        .map(|v: T| {
+        .inspect(|_v: &T| {
             env.storage().persistent().extend_ttl(
                 key,
                 DEFAULT_LEDGER_THRESHOLD,
                 DEFAULT_LEDGER_BUMP,
             );
-            v
         })
 }
 

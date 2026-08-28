@@ -4,8 +4,8 @@ mod errors;
 mod events;
 mod storage;
 
-use cross_contract_view::token_helpers;
 use errors::YieldVaultError;
+use reentrancy_guard::{acquire as acquire_reentrancy, release as release_reentrancy};
 use soroban_sdk::token::TokenClient;
 use soroban_sdk::{contract, contractclient, contractimpl, Address, BytesN, Env, Symbol};
 use storage::{DataKey, YieldProvider};
@@ -64,11 +64,6 @@ impl YieldVaultContract {
         env.storage().instance().extend_ttl(100, 100);
 
         Ok(())
-    }
-
-    /// Helper to read token balance using cross-contract view helper
-    fn get_token_balance(env: &Env, token: &Address, address: &Address) -> i128 {
-        token_helpers::balance(env, token, address)
     }
 
     pub fn set_paused(env: Env, caller: Address, paused: bool) -> Result<(), YieldVaultError> {
