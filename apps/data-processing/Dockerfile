@@ -18,4 +18,10 @@ COPY . .
 RUN mkdir -p /app/.cache/huggingface \
     && python -c "from transformers import AutoModelForSequenceClassification, AutoTokenizer; m='ProsusAI/finbert'; AutoTokenizer.from_pretrained(m); AutoModelForSequenceClassification.from_pretrained(m)"
 
+# Vendor the pinned spaCy NER model at build time (not container start). The
+# script installs the exact pinned wheel and copies it into /app/models/ner so
+# the runtime has zero outbound network dependency for model resolution.
+# Fails the build if the pinned model cannot be fetched.
+RUN python scripts/fetch_ner_model.py && python scripts/fetch_ner_model.py --check-only
+
 CMD ["python", "src/main.py"]
