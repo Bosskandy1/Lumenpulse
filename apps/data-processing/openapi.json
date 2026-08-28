@@ -1300,6 +1300,162 @@
         }
       }
     },
+    "/api/sentiment-labels": {
+      "post": {
+        "tags": [
+          "Sentiment Labels"
+        ],
+        "summary": "Submit Sentiment Label",
+        "description": "Submit a label or correct the existing label for identical text.",
+        "operationId": "submit_sentiment_label_api_sentiment_labels_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SentimentLabelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SentimentLabelResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Sentiment Labels"
+        ],
+        "summary": "List Sentiment Labels",
+        "operationId": "list_sentiment_labels_api_sentiment_labels_get",
+        "parameters": [
+          {
+            "name": "held_out",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Held Out"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1000,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SentimentLabelResponse"
+                  },
+                  "title": "Response List Sentiment Labels Api Sentiment Labels Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sentiment-labels/{label_id}": {
+      "put": {
+        "tags": [
+          "Sentiment Labels"
+        ],
+        "summary": "Correct Sentiment Label",
+        "description": "Correct a label by updating the canonical text record.",
+        "operationId": "correct_sentiment_label_api_sentiment_labels__label_id__put",
+        "parameters": [
+          {
+            "name": "label_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Label Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SentimentLabelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SentimentLabelResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/metrics": {
       "get": {
         "summary": "Metrics",
@@ -4655,6 +4811,86 @@
         ],
         "title": "SentimentIndicatorResponse",
         "description": "Visual indicator fields attached to every sentiment-bearing response."
+      },
+      "SentimentLabelRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "labeller": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Labeller"
+          },
+          "is_held_out": {
+            "type": "boolean",
+            "title": "Is Held Out",
+            "default": false
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "label",
+          "labeller"
+        ],
+        "title": "SentimentLabelRequest"
+      },
+      "SentimentLabelResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "labeller": {
+            "type": "string",
+            "title": "Labeller"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "is_held_out": {
+            "type": "boolean",
+            "title": "Is Held Out"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "label",
+          "labeller",
+          "timestamp",
+          "is_held_out"
+        ],
+        "title": "SentimentLabelResponse"
       },
       "ShadowPromoteRequest": {
         "properties": {

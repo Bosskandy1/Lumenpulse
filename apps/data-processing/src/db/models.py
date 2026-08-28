@@ -755,6 +755,26 @@ class EntityLinkingReview(Base):
         )
 
 
+class SentimentLabel(Base):
+    """Human-labelled sentiment example used for evaluation and retraining."""
+
+    __tablename__ = "sentiment_labels"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    text = Column(Text, nullable=False)
+    label = Column(String(20), nullable=False, index=True)
+    labeller = Column(String(255), nullable=False)
+    labelled_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    is_held_out = Column(Boolean, nullable=False, default=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("ux_sentiment_labels_text", "text", unique=True),
+        Index("idx_sentiment_labels_evaluation_split", "is_held_out", "label"),
+    )
+
+
 class DailyOnchainKPISnapshot(Base):
     """
     Stores daily aggregated snapshots of core on-chain KPIs
