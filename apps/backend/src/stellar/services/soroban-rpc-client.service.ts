@@ -463,16 +463,17 @@ export class SorobanRpcClientService {
       : {};
   }
 
-  private callIfFunction(value: unknown): unknown {
-    return typeof value === 'function' ? value() : value;
-  }
-
   private readRecordField(
     record: Record<string, unknown>,
     key: string,
   ): unknown {
     const value = record[key];
-    return typeof value === 'function' ? value.call(record) : value;
+    if (typeof value !== 'function') {
+      return value;
+    }
+
+    const accessor = value as (this: Record<string, unknown>) => unknown;
+    return accessor.call(record);
   }
 
   private toStellarAddress(invocation: Record<string, unknown>): string {
@@ -496,12 +497,25 @@ export class SorobanRpcClientService {
       return 'unknown';
     }
 
-    const raw =
-      typeof value === 'string'
-        ? value
-        : Buffer.isBuffer(value)
-          ? value.toString('hex')
-          : String(value);
+    let raw: string;
+    if (typeof value === 'string') {
+      raw = value;
+    } else if (Buffer.isBuffer(value)) {
+      raw = value.toString('hex');
+    } else if (
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      typeof value === 'bigint'
+    ) {
+      raw = value.toString();
+    } else if (typeof value === 'symbol') {
+      raw = value.description ?? 'symbol';
+    } else if (value instanceof Error) {
+      raw = value.message;
+    } else {
+      raw = Array.isArray(value) ? `array(${value.length})` : 'object';
+    }
+
     return raw.length > maxLength ? `${raw.slice(0, maxLength)}...` : raw;
   }
 
