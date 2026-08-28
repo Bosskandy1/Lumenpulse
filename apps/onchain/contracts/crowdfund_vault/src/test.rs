@@ -1,5 +1,5 @@
 use crate::errors::CrowdfundError;
-use crate::storage::DataKey;
+use crate::storage::{DataKey, MilestoneDecision, MAX_MILESTONE_DECISION_BATCH_SIZE};
 use crate::{CrowdfundVaultContract, CrowdfundVaultContractClient};
 use soroban_sdk::{
     symbol_short,
@@ -329,6 +329,152 @@ fn test_non_admin_cannot_approve() {
     let non_admin = Address::generate(&env);
     let result = client.try_approve_milestone(&non_admin, &project_id, &0);
     assert_eq!(result, Err(Ok(CrowdfundError::Unauthorized)));
+}
+
+#[test]
+fn test_process_milestone_decisions_mixed_batch() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let (client, admin, owner, _, token_client) = setup_test(&env);
+    client.initialize(&admin);
+
+    let project_id = client.create_project(
+        &owner,
+        &symbol_short!("TestProj"),
+        &1_000_000,
+        &token_client.address,
+    );
+
+    client.approve_milestone(&admin, &project_id, &1);
+
+    let outcomes = client.process_milestone_decisions(
+        &admin,
+        &vec![
+            &env,
+            MilestoneDecision {
+                project_id,
+                milestone_id: 0,
+                approve: true,
+            },
+            MilestoneDecision {
+                project_id,
+                milestone_id: 1,
+                approve: false,
+            },
+        ],
+    );
+
+    assert_eq!(outcomes.len(), 2);
+    assert_eq!(outcomes.get(0).unwrap().project_id, project_id);
+    assert_eq!(outcomes.get(0).unwrap().milestone_id, 0);
+    assert!(outcomes.get(0).unwrap().approved);
+    assert_eq!(outcomes.get(1).unwrap().project_id, project_id);
+    assert_eq!(outcomes.get(1).unwrap().milestone_id, 1);
+    assert!(!outcomes.get(1).unwrap().approved);
+    assert!(client.is_milestone_approved(&project_id, &0));
+    assert!(!client.is_milestone_approved(&project_id, &1));
+}
+
+#[test]
+fn test_process_milestone_decisions_rejects_oversized_batch() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let (client, admin, owner, _, token_client) = setup_test(&env);
+    client.initialize(&admin);
+
+    let project_id = client.create_project(
+        &owner,
+        &symbol_short!("TestProj"),
+        &1_000_000,
+        &token_client.address,
+    );
+
+    let mut decisions = vec![&env];
+    for milestone_id in 0..=MAX_MILESTONE_DECISION_BATCH_SIZE {
+        decisions.push_back(MilestoneDecision {
+            project_id,
+            milestone_id,
+            approve: true,
+        });
+    }
+
+    let result = client.try_process_milestone_decisions(&admin, &decisions);
+    assert_eq!(result, Err(Ok(CrowdfundError::InvalidBatch)));
+    assert!(!client.is_milestone_approved(&project_id, &1));
+}
+
+#[test]
+fn test_process_milestone_decisions_rejects_duplicate_milestones() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let (client, admin, owner, _, token_client) = setup_test(&env);
+    client.initialize(&admin);
+
+    let project_id = client.create_project(
+        &owner,
+        &symbol_short!("TestProj"),
+        &1_000_000,
+        &token_client.address,
+    );
+
+    let result = client.try_process_milestone_decisions(
+        &admin,
+        &vec![
+            &env,
+            MilestoneDecision {
+                project_id,
+                milestone_id: 0,
+                approve: true,
+            },
+            MilestoneDecision {
+                project_id,
+                milestone_id: 0,
+                approve: false,
+            },
+        ],
+    );
+
+    assert_eq!(result, Err(Ok(CrowdfundError::InvalidBatch)));
+    assert!(!client.is_milestone_approved(&project_id, &0));
+}
+
+#[test]
+fn test_process_milestone_decisions_validates_before_mutating() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let (client, admin, owner, _, token_client) = setup_test(&env);
+    client.initialize(&admin);
+
+    let project_id = client.create_project(
+        &owner,
+        &symbol_short!("TestProj"),
+        &1_000_000,
+        &token_client.address,
+    );
+
+    let result = client.try_process_milestone_decisions(
+        &admin,
+        &vec![
+            &env,
+            MilestoneDecision {
+                project_id,
+                milestone_id: 0,
+                approve: true,
+            },
+            MilestoneDecision {
+                project_id: 999,
+                milestone_id: 0,
+                approve: true,
+            },
+        ],
+    );
+
+    assert_eq!(result, Err(Ok(CrowdfundError::ProjectNotFound)));
+    assert!(!client.is_milestone_approved(&project_id, &0));
 }
 
 #[test]
