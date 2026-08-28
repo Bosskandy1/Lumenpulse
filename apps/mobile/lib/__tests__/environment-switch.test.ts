@@ -1,4 +1,39 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
+import { DeviceEventEmitter } from 'react-native';
+
+jest.mock('@react-native-async-storage/async-storage', () => {
+  const store = new Map<string, string>();
+  return {
+    getItem: jest.fn((key: string) => Promise.resolve(store.get(key) ?? null)),
+    setItem: jest.fn((key: string, value: string) => {
+      store.set(key, value);
+      return Promise.resolve();
+    }),
+    removeItem: jest.fn((key: string) => {
+      store.delete(key);
+      return Promise.resolve();
+    }),
+    getAllKeys: jest.fn(() => Promise.resolve(Array.from(store.keys()))),
+    multiRemove: jest.fn((keys: string[]) => {
+      for (const k of keys) store.delete(k);
+      return Promise.resolve();
+    }),
+    clear: jest.fn(() => {
+      store.clear();
+      return Promise.resolve();
+    }),
+  };
+});
+
+jest.mock('@react-native-community/netinfo', () => ({
+  addEventListener: jest.fn(),
+}));
+
+jest.mock('react-native', () => ({
+  DeviceEventEmitter: { emit: jest.fn() },
+}));
+
 import { CacheManager } from '../cache';
 
 /**
@@ -13,6 +48,10 @@ describe('Environment Switching and Cache Clearing', () => {
   let cacheManager: CacheManager;
 
   beforeEach(() => {
+    jest.clearAllMocks();
+    (NetInfo.addEventListener as jest.Mock).mockImplementation((listener) => {
+      listener({ isConnected: true });
+    });
     cacheManager = CacheManager.getInstance();
     // Clear AsyncStorage before each test
     AsyncStorage.clear();

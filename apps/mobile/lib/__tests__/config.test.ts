@@ -4,6 +4,7 @@ import {
   setActiveEnvironment,
   validateEnvironmentConfig,
   config,
+  environmentConfigs,
 } from '../config';
 
 describe('config', () => {
@@ -83,22 +84,39 @@ describe('config', () => {
       });
 
       // Override config.isProduction to simulate production
+      const originalIsProduction = config.isProduction;
       Object.defineProperty(config, 'isProduction', {
         configurable: true,
         get: () => true,
       });
 
+      // Ensure mainnet API URL passes validation first so we can test the Soroban check in isolation
+      const originalMainnetApiBaseUrl = environmentConfigs.mainnet.apiBaseUrl;
+      Object.defineProperty(environmentConfigs.mainnet, 'apiBaseUrl', {
+        configurable: true,
+        writable: true,
+        value: 'https://api.lumenpulse.example.com',
+      });
+
       // Get the current mainnet config
       const mainnetConfig = getEnvironmentConfig('mainnet');
 
-      // If mainnet Soroban RPC URL is not set or is localhost, validation should throw
-      if (!mainnetConfig.sorobanRpcUrl || mainnetConfig.sorobanRpcUrl.includes('localhost')) {
-        expect(() => validateEnvironmentConfig()).toThrow(
-          /Mainnet Soroban RPC URL is not properly configured/,
-        );
-      } else {
-        // If properly configured, should not throw
-        expect(() => validateEnvironmentConfig()).not.toThrow();
+      try {
+        // If mainnet Soroban RPC URL is not set or is localhost, validation should throw
+        if (!mainnetConfig.sorobanRpcUrl || mainnetConfig.sorobanRpcUrl.includes('localhost')) {
+          expect(() => validateEnvironmentConfig()).toThrow(
+            /Mainnet Soroban RPC URL is not properly configured/,
+          );
+        } else {
+          // If properly configured, should not throw
+          expect(() => validateEnvironmentConfig()).not.toThrow();
+        }
+      } finally {
+        Object.defineProperty(environmentConfigs.mainnet, 'apiBaseUrl', {
+          configurable: true,
+          writable: true,
+          value: originalMainnetApiBaseUrl,
+        });
       }
     });
 
@@ -111,19 +129,47 @@ describe('config', () => {
       });
 
       // Override config.isProduction to simulate production
+      const originalIsProduction = config.isProduction;
       Object.defineProperty(config, 'isProduction', {
         configurable: true,
         get: () => true,
       });
 
+      // Ensure both mainnet checks pass first so we can test the testnet-localhost check in isolation
+      const originalMainnetApiBaseUrl = environmentConfigs.mainnet.apiBaseUrl;
+      const originalMainnetSorobanRpcUrl = environmentConfigs.mainnet.sorobanRpcUrl;
+      Object.defineProperty(environmentConfigs.mainnet, 'apiBaseUrl', {
+        configurable: true,
+        writable: true,
+        value: 'https://api.lumenpulse.example.com',
+      });
+      Object.defineProperty(environmentConfigs.mainnet, 'sorobanRpcUrl', {
+        configurable: true,
+        writable: true,
+        value: 'https://soroban-rpc.example.com',
+      });
+
       // Get the current testnet config
       const testnetConfig = getEnvironmentConfig('testnet');
 
-      // If testnet API URL defaulted to localhost, validation should throw
-      if (testnetConfig.apiBaseUrl === 'http://localhost:3000') {
-        expect(() => validateEnvironmentConfig()).toThrow(
-          /Testnet API URL defaulted to localhost/,
-        );
+      try {
+        // If testnet API URL defaulted to localhost, validation should throw
+        if (testnetConfig.apiBaseUrl === 'http://localhost:3000') {
+          expect(() => validateEnvironmentConfig()).toThrow(
+            /Testnet API URL defaulted to localhost/,
+          );
+        }
+      } finally {
+        Object.defineProperty(environmentConfigs.mainnet, 'apiBaseUrl', {
+          configurable: true,
+          writable: true,
+          value: originalMainnetApiBaseUrl,
+        });
+        Object.defineProperty(environmentConfigs.mainnet, 'sorobanRpcUrl', {
+          configurable: true,
+          writable: true,
+          value: originalMainnetSorobanRpcUrl,
+        });
       }
     });
   });
