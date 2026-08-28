@@ -125,10 +125,24 @@ class NERService:
             )
             return None
 
-        # Fail fast if the pinned model is not present. This is deliberate: the
-        # service must not silently fall back to a different/unpinned model, and
-        # must not attempt an outbound download at container start.
-        check_model_available(self._cfg)
+        # Only the exact pinned/vendored model may be loaded. If it is not
+        # present we fall back to the deterministic regex/canonical-name
+        # extraction, which uses no model at all, rather than silently loading
+        # an unpinned or blank model. The strict "fail fast" behaviour is
+        # enforced by the startup gates (scripts/fetch_ner_model.py --check-only
+        # and the `check-models` / `serve` commands in src/main.py), where the
+        # missing model is an error; outside the container this simply means a
+        # reduced but deterministic extraction mode.
+        try:
+            check_model_available(self._cfg)
+        except MissingNERModelError as exc:
+            logger.warning(
+                "Pinned NER model is not available (%s); using regex-only "
+                "entity extraction fallback. Run `python scripts/fetch_ner_model.py` "
+                "to vendor the model, or `python src/main.py check-models` to enforce it.",
+                exc,
+            )
+            return None
         model_name = self._cfg.shipped_version_tag
 
         try:

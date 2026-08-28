@@ -90,3 +90,20 @@ def test_model_version_property_reports_pinned_version() -> None:
     cfg = NERConfig(model_name="en_core_web_sm", model_version="3.7.1")
     assert cfg.shipped_version_tag == "en_core_web_sm-3.7.1"
 
+
+def test_service_falls_back_to_regex_when_model_missing(tmp_path) -> None:
+    cfg = NERConfig(
+        model_dir=str(tmp_path),
+        model_name="en_core_web_sm",
+        model_version="3.7.1",
+    )
+    service = NERService(cfg=cfg)
+
+    entities = service.extract_entities(
+        "Soroban on Stellar gains traction after XLM utility grew."
+    )
+
+    assert "Soroban" in entities
+    assert "Stellar" in entities
+    assert "XLM" in entities
+
