@@ -1,4 +1,10 @@
-import { getActiveEnvironment, getEnvironmentConfig, setActiveEnvironment } from '../config';
+import {
+  getActiveEnvironment,
+  getEnvironmentConfig,
+  setActiveEnvironment,
+  validateEnvironmentConfig,
+  config,
+} from '../config';
 
 describe('config', () => {
   it('has a default testnet environment', () => {
@@ -12,5 +18,113 @@ describe('config', () => {
     expect(getEnvironmentConfig().explorerNetwork).toBe('public');
 
     setActiveEnvironment('testnet');
+  });
+
+  describe('validateEnvironmentConfig', () => {
+    // Save original __DEV__ value
+    const originalDev = global.__DEV__;
+
+    afterEach(() => {
+      // Restore original __DEV__ value
+      Object.defineProperty(global, '__DEV__', {
+        configurable: true,
+        writable: true,
+        value: originalDev,
+      });
+    });
+
+    it('does not throw in development mode', () => {
+      // Set __DEV__ to true (development mode)
+      Object.defineProperty(global, '__DEV__', {
+        configurable: true,
+        writable: true,
+        value: true,
+      });
+
+      // Should not throw even if config is invalid in dev
+      expect(() => validateEnvironmentConfig()).not.toThrow();
+    });
+
+    it('checks mainnet API URL is set (not empty or localhost) in production', () => {
+      // Set __DEV__ to false (production mode)
+      Object.defineProperty(global, '__DEV__', {
+        configurable: true,
+        writable: true,
+        value: false,
+      });
+
+      // Override config.isProduction to simulate production
+      const originalIsProduction = config.isProduction;
+      Object.defineProperty(config, 'isProduction', {
+        configurable: true,
+        get: () => true,
+      });
+
+      // Get the current mainnet config
+      const mainnetConfig = getEnvironmentConfig('mainnet');
+
+      // If mainnet API URL is not set or is localhost, validation should throw
+      if (!mainnetConfig.apiBaseUrl || mainnetConfig.apiBaseUrl.includes('localhost')) {
+        expect(() => validateEnvironmentConfig()).toThrow(
+          /Mainnet API URL is not properly configured/,
+        );
+      } else {
+        // If properly configured, should not throw
+        expect(() => validateEnvironmentConfig()).not.toThrow();
+      }
+    });
+
+    it('checks mainnet Soroban RPC URL is set (not empty or localhost) in production', () => {
+      // Set __DEV__ to false (production mode)
+      Object.defineProperty(global, '__DEV__', {
+        configurable: true,
+        writable: true,
+        value: false,
+      });
+
+      // Override config.isProduction to simulate production
+      Object.defineProperty(config, 'isProduction', {
+        configurable: true,
+        get: () => true,
+      });
+
+      // Get the current mainnet config
+      const mainnetConfig = getEnvironmentConfig('mainnet');
+
+      // If mainnet Soroban RPC URL is not set or is localhost, validation should throw
+      if (!mainnetConfig.sorobanRpcUrl || mainnetConfig.sorobanRpcUrl.includes('localhost')) {
+        expect(() => validateEnvironmentConfig()).toThrow(
+          /Mainnet Soroban RPC URL is not properly configured/,
+        );
+      } else {
+        // If properly configured, should not throw
+        expect(() => validateEnvironmentConfig()).not.toThrow();
+      }
+    });
+
+    it('detects testnet defaulting to localhost in production', () => {
+      // Set __DEV__ to false (production mode)
+      Object.defineProperty(global, '__DEV__', {
+        configurable: true,
+        writable: true,
+        value: false,
+      });
+
+      // Override config.isProduction to simulate production
+      Object.defineProperty(config, 'isProduction', {
+        configurable: true,
+        get: () => true,
+      });
+
+      // Get the current testnet config
+      const testnetConfig = getEnvironmentConfig('testnet');
+
+      // If testnet API URL defaulted to localhost, validation should throw
+      if (testnetConfig.apiBaseUrl === 'http://localhost:3000') {
+        expect(() => validateEnvironmentConfig()).toThrow(
+          /Testnet API URL defaulted to localhost/,
+        );
+      }
+    });
   });
 });
